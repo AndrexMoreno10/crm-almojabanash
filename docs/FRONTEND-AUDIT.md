@@ -26,7 +26,7 @@ Las columnas pasan de 248 a 300 píxeles mínimos en escritorio. Las tarjetas mu
 
 ## Validación
 
-- `npm run check`: TypeScript, compilación de Vite y veinticuatro pruebas de negocio, revisión de fichas, identidad visual, persistencia y sincronización Git.
+- `npm run check`: TypeScript, compilación de Vite y treinta pruebas de negocio, inventario, seguimiento, revisión de fichas, identidad visual, persistencia y sincronización Git.
 - `npm run test:e2e`: recorrido completo con SQLite temporal, ocho etapas, notas, recarga, indicadores, filtros, CSV, simulador y estados de error; revisión automática con axe de vistas principales, ficha y navegación móvil.
 - Escritorio de 1440 y 1280 píxeles y móvil de 390 píxeles; comprobación de desbordamiento de página y capturas fuera del repositorio.
 - Diez leads en una etapa: varias tarjetas completas visibles, nombres largos acotados, desplazamiento dentro de la columna sin alargar la página y apertura del detalle desde una tarjeta al final de la lista.
@@ -42,7 +42,13 @@ El workflow de GitHub valida compilación y pruebas en cada push a main o pull r
 
 ## Inicio simplificado para la gestión comercial
 
-El Resumen se sustituyó por una sola lista con tres pestañas: Por atender, Seguimientos y Por cerrar. Los leads vencidos aparecen primero en seguimientos y las conversaciones sin próxima fecha también se incluyen. Cada fila abre su ficha y permite identificar el siguiente paso; la lista completa conserva el mismo filtro. Se retiraron las tarjetas grandes, el gráfico, el valor estimado, los contactos recientes y la tarjeta lateral de agenda del inicio. Los resultados de primera compra y recurrencia quedan en una línea breve. Se conserva Sin revisar en CRM como acceso secundario. No se incorpora inventario. Los criterios completos están en DASHBOARD.md.
+El Resumen se sustituyó por una sola lista con tres pestañas: Por atender, Seguimientos y Por cerrar. Los leads vencidos aparecen primero en seguimientos y las conversaciones sin próxima fecha también se incluyen. Cada fila abre su ficha y permite identificar el siguiente paso; la lista completa conserva el mismo filtro. Se retiraron las tarjetas grandes, el gráfico, el valor estimado, los contactos recientes y la tarjeta lateral de agenda del inicio. Los resultados de primera compra y recurrencia quedan en una línea breve. Se conserva Sin revisar en CRM como acceso secundario. Los criterios completos están en DASHBOARD.md.
+
+## Inventario y seguimiento integrado
+
+Inventario sustituye la agenda independiente del sidebar. Presenta catálogo, búsqueda, categorías, estados de existencias, precios, mínimos y archivo; el historial está en otra pestaña con filtro por producto y paginación. El catálogo tiene desplazamiento interno y encabezado fijo para evitar una página extensa. Los formularios reutilizan el modal accesible del CRM, mantienen el foco y se adaptan a móvil. Las existencias y precios sin registrar tienen etiquetas explícitas y no se muestran como ceros reales.
+
+El embudo conserva la fecha y añade un control compacto de seguimiento con etiqueta y color: Disponible, Pendiente, No interesado o Sin marcar. La clasificación no modifica la etapa ni el indicador de revisión; cada cambio se registra. No se deduce interés comercial de una etapa ni se inventa el seguimiento de los leads anteriores.
 
 ## Logos y contactos existentes
 

@@ -1,5 +1,6 @@
 import { migratePipelineSettings } from "./migrations.ts";
 import { installBranding } from "./branding.ts";
+import { installInventory } from "./inventory.ts";
 import express from "express";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
@@ -10,6 +11,8 @@ import { installMeta, readMetaConfig, type MetaConfig } from "./meta.ts";
 import {
   defaultLabels,
   stages,
+  followupStates,
+  followupLabels,
   type Lead,
   type Settings,
 } from "../shared/types.ts";
@@ -27,6 +30,7 @@ const leadSchema = z
     value: z.number().finite().min(0).max(1e12).default(0),
     nextContactAt: z.iso.datetime({ offset: true }).nullable().default(null),
     lostReason: text(1000).default(""),
+    followupStatus: z.enum(followupStates).default(""),
   })
   .strict();
 const labelsSchema = z
@@ -76,6 +80,15 @@ export function createApp(
     );
     CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL);
   `);
+  if (
+    !(db.prepare("PRAGMA table_info(leads)").all() as { name: string }[]).some(
+      (column) => column.name === "followupStatus",
+    )
+  ) {
+    db.exec(
+      "ALTER TABLE leads ADD COLUMN followupStatus TEXT NOT NULL DEFAULT '' CHECK(followupStatus IN ('','available','pending','not_interested'))",
+    );
+  }
   db.prepare("INSERT OR IGNORE INTO settings (id, data) VALUES (1, ?)").run(
     JSON.stringify({ stageLabels: defaultLabels }),
   );
@@ -148,6 +161,7 @@ export function createApp(
   );
   const meta = installMeta(app, db, metaConfig);
   installBranding(app, db);
+  installInventory(app, db);
   app.get("/api/health", (_req, res) => {
     db.prepare("SELECT 1").get();
     res.json({ status: "ok" });
@@ -237,8 +251,8 @@ export function createApp(
     };
     transaction(() => {
       db.prepare(
-        `INSERT INTO leads (id,name,phone,email,source,campaign,owner,stage,value,nextContactAt,lostReason,createdAt,updatedAt)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO leads (id,name,phone,email,source,campaign,owner,stage,value,nextContactAt,lostReason,createdAt,updatedAt,followupStatus)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       ).run(
         lead.id,
         lead.name,
@@ -253,6 +267,7 @@ export function createApp(
         lead.lostReason,
         now,
         now,
+        lead.followupStatus,
       );
       activity(lead.id, "event", "Oportunidad creada");
     });
@@ -281,7 +296,7 @@ export function createApp(
     } as Lead;
     transaction(() => {
       db.prepare(
-        `UPDATE leads SET name=?,phone=?,email=?,source=?,campaign=?,owner=?,stage=?,value=?,nextContactAt=?,lostReason=?,updatedAt=? WHERE id=?`,
+        `UPDATE leads SET name=?,phone=?,email=?,source=?,campaign=?,owner=?,stage=?,value=?,nextContactAt=?,lostReason=?,followupStatus=?,updatedAt=? WHERE id=?`,
       ).run(
         lead.name,
         lead.phone,
@@ -293,6 +308,7 @@ export function createApp(
         lead.value,
         lead.nextContactAt,
         lead.lostReason,
+        lead.followupStatus,
         lead.updatedAt,
         lead.id,
       );
@@ -301,6 +317,12 @@ export function createApp(
           lead.id,
           "event",
           `Etapa: ${getSettings().stageLabels[before.stage]} → ${getSettings().stageLabels[lead.stage]}`,
+        );
+      if (before.followupStatus !== lead.followupStatus)
+        activity(
+          lead.id,
+          "event",
+          `Seguimiento: ${followupLabels[before.followupStatus]} → ${followupLabels[lead.followupStatus]}`,
         );
       if (before.nextContactAt !== lead.nextContactAt)
         activity(

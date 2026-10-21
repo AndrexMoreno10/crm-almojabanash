@@ -173,7 +173,17 @@ test(
         .getByRole("button", { name: "Crear oportunidad", exact: true })
         .click();
       await page.getByRole("dialog").waitFor({ state: "hidden" });
-      assert.equal(await page.locator(".lead-card select").count(), 0);
+      assert.equal(
+        await page.getByRole("combobox", { name: /^Etapa de / }).count(),
+        0,
+      );
+      await page
+        .getByRole("combobox", {
+          name: "Seguimiento de Hotel de prueba",
+          exact: true,
+        })
+        .selectOption("pending");
+      await page.locator('.lead-card[data-followup="pending"]').waitFor();
       await page
         .getByRole("img", { name: "Sin revisar en CRM", exact: true })
         .waitFor();

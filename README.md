@@ -10,7 +10,8 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 - Embudo con encabezado compacto, tarjetas más anchas y resumidas y desplazamiento independiente en cada etapa. Los campos vacíos y valores en cero se omiten en la tarjeta; la ficha conserva toda la información.
 - Apertura de WhatsApp para atención manual de contactos con indicativo internacional; sin sincronización automática.
 - Registro de contacto, canal, campaña, responsable y valor estimado opcional, sin moneda asumida.
-- Notas e historial, agenda de seguimiento, búsqueda y exportación CSV.
+- Notas e historial, seguimiento por colores y fechas dentro del embudo, búsqueda y exportación CSV.
+- **Inventario** con los 40 productos de la carta del usuario, precios editables, conteo inicial, entradas/salidas, mínimos, historial, CSV y archivo/reactivación. Los precios y existencias desconocidos permanecen sin definir.
 - Inicio con tres vistas: Por atender, Seguimientos y Por cerrar, con acceso al detalle y a la lista completa. Se conserva el acceso a fichas sin revisar en CRM; revisar no significa responder o avanzar de etapa.
 - Persistencia local con SQLite; las pruebas usan bases temporales separadas.
 - Simulador de un asistente guiado: permiso de seguimiento, tipo de comprador, cantidad, ciudad, nombre e interés en una muestra.
@@ -72,7 +73,7 @@ npm run check
 npm run test:e2e
 ```
 
-`check` compila TypeScript y Vite y ejecuta veinticuatro pruebas de API, persistencia, revisión de fichas, identidad visual, bot, Meta y sincronización Git, incluyendo la conservación de archivos ignorados. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, ocho etapas, pérdida y recuperación, indicadores, notas, filtros, exportación, recarga, insignias del canal junto a las iniciales, carga del logo, conversación del bot y tamaño móvil. También ejecuta axe sobre las vistas principales para detectar problemas WCAG A/AA. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las capturas se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png`, `/tmp/almo-crm-mobile.png`, `/tmp/almo-crm-overview.png` y `/tmp/almo-crm-overview-mobile.png`.
+`check` compila TypeScript y Vite y ejecuta treinta pruebas de API, inventario, persistencia, seguimiento, revisión de fichas, identidad visual, bot, Meta y sincronización Git, incluyendo la conservación de archivos ignorados. `test:e2e` ejecuta los recorridos de CRM e inventario en Chromium con servidores y bases temporales, incluyendo precios, conteos, ventas, stock bajo, historial, archivo y móvil. También ejecuta axe sobre las vistas principales para detectar problemas WCAG A/AA. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las capturas se guardan fuera del repositorio: `/tmp/almo-crm-*.png` y `/tmp/almo-inventory-*.png`.
 
 ## Antes de atender clientes reales
 
@@ -83,6 +84,8 @@ El asistente es un flujo determinista, no un modelo generativo. Permite probar l
 Consulta [las decisiones y los pendientes del negocio](docs/PRODUCTO.md).
 
 Consulta [los criterios del dashboard](docs/DASHBOARD.md) para distinguir revisión, primera atención, seguimiento y conversión.
+
+Consulta [la guía del inventario](docs/INVENTARIO.md) para cargar cantidades y precios y revisar las reglas que faltan por definir.
 
 La [auditoría del frontend](docs/FRONTEND-AUDIT.md) detalla los cambios visuales y de accesibilidad. GitHub Actions ejecuta compilación y pruebas en los pushes a main y pull requests. El despliegue queda pendiente de definir el proveedor y destino.
 
@@ -106,3 +109,5 @@ Las tarjetas y la ficha del contacto muestran una insignia de WhatsApp, Instagra
 El sidebar muestra el logo del negocio centrado y a mayor tamaño, con «Almojábanas Huilenses MJ» debajo y el lema «Las Originales»; el clic en el logo abre el Resumen. La cámara permite cambiarlo con un PNG, JPG o WebP de hasta 2 MB y 4096 × 4096 píxeles. Se conserva el archivo en SQLite y se utiliza en el sidebar y el icono de la pestaña. Persiste al recargar y reiniciar; no requiere recompilar ni subir el archivo a GitHub. El monograma sigue visible hasta cargar el archivo en ese CRM. Se eliminaron la tarjeta de sede y la tarjeta grande de pendientes; Seguimientos conserva el indicador de vencidos.
 
 Las tarjetas no repiten el selector de etapa: la columna indica su estado y los cambios se hacen desde la ficha o mediante arrastre. Un punto azul indica **Sin revisar en CRM** y un doble chulo gris **Revisado en CRM** al abrir su ficha. La revisión se conserva al recargar; no representa lectura de mensajes en WhatsApp.
+
+El seguimiento ahora se marca desde las tarjetas o las fichas: verde **Disponible**, amarillo **Pendiente**, rojo **No interesado** y neutro **Sin marcar**. El color se conserva en el historial por separado de la etapa comercial. **Inventario** sustituye a la sección independiente de Seguimientos; sus fechas y notas se conservan.

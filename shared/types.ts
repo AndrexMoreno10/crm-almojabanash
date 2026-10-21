@@ -44,6 +44,19 @@ export const isConvertedStage = (stage: Stage) =>
 export const isOpenStage = (stage: Stage) =>
   !isConvertedStage(stage) && stage !== "lost";
 export const canFollowUp = (stage: Stage) => stage !== "lost";
+export const followupStates = [
+  "",
+  "available",
+  "pending",
+  "not_interested",
+] as const;
+export type FollowupState = (typeof followupStates)[number];
+export const followupLabels: Record<FollowupState, string> = {
+  "": "Sin marcar",
+  available: "Disponible",
+  pending: "Pendiente",
+  not_interested: "No interesado",
+};
 export interface Lead {
   id: string;
   name: string;
@@ -56,6 +69,7 @@ export interface Lead {
   value: number;
   nextContactAt: string | null;
   lostReason: string;
+  followupStatus: FollowupState;
   createdAt: string;
   updatedAt: string;
 }

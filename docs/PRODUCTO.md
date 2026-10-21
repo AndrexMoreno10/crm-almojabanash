@@ -34,7 +34,7 @@ La calificación se puede probar íntegramente en el simulador. El adaptador rea
 ## Pendiente de confirmar
 
 - Horarios y condiciones concretas de entrega. Los radios de los anuncios no definen entrega.
-- Catálogo, precios, mínimos, disponibilidad, pagos y condiciones de entrega.
+- Precios, mínimos, existencias, presentaciones, pagos y condiciones de entrega. El usuario aportó una carta con 40 productos para iniciar el catálogo de inventario; sus precios quedan editables y sin definir.
 - Condiciones de muestras y aprobación del dueño o administrador. El usuario propone «dar unas 5» para presentar un piloto; falta aclarar si son unidades por prospecto o cantidad de prospectos, y su costo. No es una oferta comercial aprobada.
 - El usuario aprobó las ocho etapas propuestas. Primera compra corresponde al primer pedido entregado y recurrencia a compras repetidas; ambas se clasifican manualmente. Falta registrar pedidos, frecuencias y cantidades en un módulo estructurado; hoy se documentan en notas.
 - App de Meta y acceso de desarrollador. La captura muestra acceso total al portafolio comercial; falta comprobar la aplicación y la elegibilidad de coexistencia con el número actual antes de activar Cloud API.
@@ -67,6 +67,7 @@ El usuario confirmó que el tamaño del piloto de muestras sigue por definir. Su
 
 - **Resumen** es la entrada inicial: indicadores comerciales, próximos seguimientos y oportunidades actualizadas.
 - **Embudo de ventas** es una sección propia del sidebar para trabajar el Kanban con más espacio.
+- **Inventario** sustituye a la sección independiente de Seguimientos. El seguimiento por color, fecha y notas se trabaja dentro de las oportunidades; el catálogo y sus movimientos tienen una sección propia.
 - Se conserva la sección al recargar y se puede navegar con Atrás/Adelante del navegador.
 - Al crear una oportunidad, el CRM abre el embudo para continuar su gestión.
 

@@ -1,3 +1,5 @@
+import Modal from "./Modal";
+import Inventory from "./Inventory";
 import Overview from "./Overview";
 import SourceLabel, { SourceIcon } from "./SourceLabel";
 import BrandIdentity from "./BrandIdentity";
@@ -40,6 +42,7 @@ import {
   LoaderCircle,
   MessageSquare,
   MapPin,
+  Package,
   Plus,
   Search,
   Settings2,
@@ -54,6 +57,9 @@ import {
   stageHints,
   isOpenStage,
   canFollowUp,
+  followupStates,
+  followupLabels,
+  type FollowupState,
   type Activity,
   type Lead,
   type LeadDetail,
@@ -65,7 +71,7 @@ import {
 const views = [
   "overview",
   "pipeline",
-  "followups",
+  "inventory",
   "contacts",
   "assistant",
 ] as const;
@@ -73,12 +79,13 @@ type View = (typeof views)[number];
 const viewLabels: Record<View, string> = {
   overview: "Resumen",
   pipeline: "Embudo de ventas",
-  followups: "Seguimientos",
+  inventory: "Inventario",
   contacts: "Contactos",
   assistant: "Asistente",
 };
 function currentView(): View {
   const hash = window.location.hash.slice(1).split("?")[0];
+  if (hash === "followups") return "pipeline";
   return views.includes(hash as View) ? (hash as View) : "overview";
 }
 function currentAttention(): AttentionFilter | null {
@@ -123,6 +130,7 @@ const blankLead: LeadInput = {
   value: 0,
   nextContactAt: null,
   lostReason: "",
+  followupStatus: "",
 };
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -172,6 +180,8 @@ export default function App() {
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [inventoryRefresh, setInventoryRefresh] = useState(0);
+  const [inventoryModal, setInventoryModal] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [clock, setClock] = useState(Date.now());
@@ -278,17 +288,6 @@ export default function App() {
   );
   const open = leads.filter(active);
   const lost = filtered.filter((l) => l.stage === "lost");
-  const overdue = leads.filter(
-    (l) =>
-      canFollowUp(l.stage) &&
-      l.nextContactAt &&
-      Date.parse(l.nextContactAt) < clock,
-  );
-  const scheduled = filtered
-    .filter((l) => canFollowUp(l.stage) && l.nextContactAt)
-    .sort(
-      (a, b) => Date.parse(a.nextContactAt!) - Date.parse(b.nextContactAt!),
-    );
   async function saved(message: string) {
     await load();
     setNotice(message);
@@ -319,16 +318,33 @@ export default function App() {
         });
     }
   }
+  async function changeFollowup(lead: Lead, followupStatus: FollowupState) {
+    if (movingId || lead.followupStatus === followupStatus) return;
+    setMovingId(lead.id);
+    try {
+      const updated = await api<Lead>(`/leads/${lead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ followupStatus }),
+      });
+      setLeads((before) =>
+        before.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setNotice(`Seguimiento: ${followupLabels[followupStatus]}`);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setMovingId(null);
+    }
+  }
   const exportable =
     view === "pipeline"
       ? filtered.filter((lead) =>
           showLost ? lead.stage === "lost" : lead.stage !== "lost",
         )
-      : view === "followups"
-        ? scheduled
-        : filtered;
+      : filtered;
   async function refreshAll() {
     setRefreshing(true);
+    if (view === "inventory") setInventoryRefresh((before) => before + 1);
     try {
       await load();
     } finally {
@@ -411,6 +427,7 @@ export default function App() {
           (mobile && !menuOpen) ||
           Boolean(modal) ||
           Boolean(selected) ||
+          inventoryModal ||
           undefined
         }
       >
@@ -441,14 +458,11 @@ export default function App() {
             Embudo de ventas <span className="nav-count">{open.length}</span>
           </NavButton>
           <NavButton
-            icon={<CalendarClock size={19} />}
-            active={view === "followups"}
-            onClick={() => navigate("followups")}
+            icon={<Package size={19} />}
+            active={view === "inventory"}
+            onClick={() => navigate("inventory")}
           >
-            Seguimientos{" "}
-            {overdue.length > 0 && (
-              <span className="nav-alert">{overdue.length}</span>
-            )}
+            Inventario
           </NavButton>
           <NavButton
             icon={<Users size={19} />}
@@ -485,7 +499,13 @@ export default function App() {
       <main
         id="main-content"
         tabIndex={-1}
-        inert={menuOpen || Boolean(modal) || Boolean(selected) || undefined}
+        inert={
+          menuOpen ||
+          Boolean(modal) ||
+          Boolean(selected) ||
+          inventoryModal ||
+          undefined
+        }
       >
         <header className="topbar">
           <button
@@ -519,18 +539,20 @@ export default function App() {
         <div className="page-content">
           <div className="page-heading">
             <div>
-              {view !== "pipeline" && view !== "overview" && (
-                <div className="eyebrow">
-                  ALMOJÁBANAS HUILENSES <span>/ COMERCIAL</span>
-                </div>
-              )}
+              {view !== "pipeline" &&
+                view !== "overview" &&
+                view !== "inventory" && (
+                  <div className="eyebrow">
+                    ALMOJÁBANAS HUILENSES <span>/ COMERCIAL</span>
+                  </div>
+                )}
               <h1>
                 {view === "overview"
                   ? "Panel comercial"
                   : view === "pipeline"
                     ? "Embudo de ventas"
-                    : view === "followups"
-                      ? "Agenda de seguimiento"
+                    : view === "inventory"
+                      ? "Inventario"
                       : view === "assistant"
                         ? "Asistente comercial"
                         : "Contactos"}
@@ -547,27 +569,27 @@ export default function App() {
                   leads
                 </span>
               )}
-              {view !== "pipeline" && (
+              {view !== "pipeline" && view !== "inventory" && (
                 <p>
                   {view === "overview"
                     ? "Responde, retoma y concreta el próximo pedido."
-                    : view === "followups"
-                      ? "Retoma las conversaciones pendientes y mantén el ritmo de tu equipo."
-                      : view === "assistant"
-                        ? "Prueba cómo acompañaremos a los interesados en compras al por mayor."
-                        : "Encuentra la información y el contexto de cada oportunidad."}
+                    : view === "assistant"
+                      ? "Prueba cómo acompañaremos a los interesados en compras al por mayor."
+                      : "Encuentra la información y el contexto de cada oportunidad."}
                 </p>
               )}
             </div>
-            <button
-              className="primary"
-              onClick={() => {
-                setInitialStage("new");
-                setModal("create");
-              }}
-            >
-              <Plus size={18} /> Nueva oportunidad
-            </button>
+            {view !== "inventory" && (
+              <button
+                className="primary"
+                onClick={() => {
+                  setInitialStage("new");
+                  setModal("create");
+                }}
+              >
+                <Plus size={18} /> Nueva oportunidad
+              </button>
+            )}
           </div>
           {error && (
             <div className="error-banner" role="alert">
@@ -587,6 +609,12 @@ export default function App() {
               onFilter={openAttention}
               onPipeline={() => navigate("pipeline")}
             />
+          ) : view === "inventory" ? (
+            <Inventory
+              leads={leads}
+              refreshKey={inventoryRefresh}
+              onModalChange={setInventoryModal}
+            />
           ) : view === "assistant" ? (
             <Assistant status={metaStatus} />
           ) : (
@@ -602,19 +630,15 @@ export default function App() {
                       ? showLost
                         ? "Oportunidades perdidas"
                         : "Tu embudo de ventas"
-                      : view === "followups"
-                        ? "Agenda de seguimiento"
-                        : attentionFilter
-                          ? attentionLabels[attentionFilter]
-                          : "Todos tus contactos"}{" "}
+                      : attentionFilter
+                        ? attentionLabels[attentionFilter]
+                        : "Todos tus contactos"}{" "}
                     <span>
-                      {view === "followups"
-                        ? scheduled.length
-                        : view === "pipeline"
-                          ? showLost
-                            ? lost.length
-                            : leads.filter((l) => l.stage !== "lost").length
-                          : filtered.length}
+                      {view === "pipeline"
+                        ? showLost
+                          ? lost.length
+                          : leads.filter((l) => l.stage !== "lost").length
+                        : filtered.length}
                     </span>
                   </h2>
                   <p>
@@ -622,9 +646,7 @@ export default function App() {
                       ? showLost
                         ? "Conserva el motivo y el historial; recupera un contacto si vuelve a interesarse."
                         : "Ocho etapas para acompañar cada lead. Arrastra las tarjetas o cambia su etapa; desliza para ver todo el recorrido."
-                      : view === "followups"
-                        ? "Ordenados por la fecha del próximo contacto."
-                        : "Toda tu información comercial en un solo lugar."}
+                      : "Toda tu información comercial en un solo lugar."}
                   </p>
                 </div>
                 {view !== "pipeline" && (
@@ -823,6 +845,9 @@ export default function App() {
                               clock={clock}
                               moving={Boolean(movingId)}
                               reviewed={!unreviewed.has(lead.id)}
+                              onFollowup={(state) =>
+                                void changeFollowup(lead, state)
+                              }
                               onClick={() => setSelected(lead.id)}
                             />
                           ))}
@@ -871,6 +896,9 @@ export default function App() {
                             lead={lead}
                             clock={clock}
                             moving={Boolean(movingId)}
+                            onFollowup={(state) =>
+                              void changeFollowup(lead, state)
+                            }
                             onClick={() => setSelected(lead.id)}
                           />
                           <p className="lost-reason">
@@ -888,49 +916,6 @@ export default function App() {
                     />
                   )}
                 </section>
-              ) : view === "followups" ? (
-                <div className="followup-list">
-                  {scheduled.length ? (
-                    scheduled.map((l) => (
-                      <button
-                        key={l.id}
-                        className="followup-row"
-                        onClick={() => setSelected(l.id)}
-                      >
-                        <span
-                          className={`followup-icon ${Date.parse(l.nextContactAt!) < clock ? "late" : ""}`}
-                        >
-                          <CalendarClock size={21} />
-                        </span>
-                        <div>
-                          <strong>{l.name}</strong>
-                          <small>
-                            {l.owner || "Sin responsable"} ·{" "}
-                            {settings.stageLabels[l.stage]}
-                          </small>
-                        </div>
-                        <time
-                          className={
-                            Date.parse(l.nextContactAt!) < clock ? "late" : ""
-                          }
-                        >
-                          {dateLabel(l.nextContactAt!)}
-                        </time>
-                        <ArrowUpRight size={18} />
-                      </button>
-                    ))
-                  ) : (
-                    <Empty
-                      icon={<CalendarClock size={26} />}
-                      title="Dale una fecha al próximo paso"
-                      text="Abre una oportunidad y programa cuándo volverás a contactar a esa persona."
-                    />
-                  )}
-                  <div className="followup-footnote">
-                    Los seguimientos se muestran dentro del CRM. Aún no se
-                    envían recordatorios externos.
-                  </div>
-                </div>
               ) : (
                 <div className="table-wrap">
                   {filtered.length ? (
@@ -1103,11 +1088,13 @@ function LeadCard({
   onClick,
   moving,
   reviewed,
+  onFollowup,
 }: {
   lead: Lead;
   clock: number;
   moving: boolean;
   reviewed?: boolean;
+  onFollowup: (state: FollowupState) => void;
   onClick: () => void;
 }) {
   const late =
@@ -1117,6 +1104,7 @@ function LeadCard({
   return (
     <article
       className="lead-card"
+      data-followup={lead.followupStatus}
       draggable={!moving}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", lead.id);
@@ -1200,99 +1188,23 @@ function LeadCard({
           </span>
         )}
       </button>
+      <select
+        className="followup-state-select"
+        aria-label={`Seguimiento de ${lead.name}`}
+        value={lead.followupStatus}
+        disabled={moving}
+        onChange={(event) => onFollowup(event.target.value as FollowupState)}
+      >
+        {followupStates.map((state) => (
+          <option key={state} value={state}>
+            {followupLabels[state]}
+          </option>
+        ))}
+      </select>
     </article>
   );
 }
 
-function Modal({
-  title,
-  subtitle,
-  children,
-  onClose,
-  wide,
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-  onClose: () => void;
-  wide?: boolean;
-}) {
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    const priorOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
-    const focusables = () =>
-      Array.from(
-        dialog?.querySelectorAll<HTMLElement>(
-          'a[href], button, input, select, textarea, [tabindex="0"]',
-        ) || [],
-      ).filter(
-        (el) => !el.hasAttribute("disabled") && el.getClientRects().length > 0,
-      );
-    focusables()[0]?.focus();
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Tab") {
-        const items = focusables();
-        const first = items[0];
-        const last = items[items.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => {
-      document.body.style.overflow = priorOverflow;
-      document.removeEventListener("keydown", handler);
-      // React may still be clearing the background's inert state during cleanup.
-      requestAnimationFrame(() => {
-        if (previous?.isConnected && !previous.closest("[inert]")) {
-          previous.focus();
-        } else {
-          const menu = document.querySelector<HTMLButtonElement>(
-            '[aria-label="Abrir menú"]',
-          );
-          (menu?.getClientRects().length
-            ? menu
-            : document.getElementById("main-content")
-          )?.focus();
-        }
-      });
-    };
-  }, []);
-  return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <section
-        className={`modal ${wide ? "wide" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="dialog-title"
-      >
-        <div className="modal-heading">
-          <div>
-            <h2 id="dialog-title">{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
-          </div>
-          <button className="icon-button" aria-label="Cerrar" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
-        {children}
-      </section>
-    </div>
-  );
-}
 function Field({ label, children }: { label: string; children: ReactNode }) {
   const id = useId();
   return (
@@ -1394,6 +1306,20 @@ function LeadFields({
           {stages.map((stage) => (
             <option key={stage} value={stage}>
               {labels[stage]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Estado de seguimiento">
+        <select
+          value={input.followupStatus}
+          onChange={(event) =>
+            update("followupStatus", event.target.value as FollowupState)
+          }
+        >
+          {followupStates.map((state) => (
+            <option key={state} value={state}>
+              {followupLabels[state]}
             </option>
           ))}
         </select>

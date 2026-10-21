@@ -12,7 +12,7 @@
     "start": "tsx server/main.ts",
     "test": "tsx --test tests/*.test.*",
     "check": "npm run build && npm test",
-    "test:e2e": "tsx --test tests/browser.e2e.ts",
+    "test:e2e": "tsx --test --test-concurrency=1 tests/*.e2e.ts",
     "review": "tsx scripts/review-local.ts",
     "dev:sync": "node scripts/dev-local.mjs --sync"
   },
