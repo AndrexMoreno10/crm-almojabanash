@@ -39,6 +39,11 @@ import Assistant, { type MetaStatus } from "./Assistant";
 import {
   defaultLabels,
   stages,
+  pipelineStages,
+  stageHints,
+  isConvertedStage,
+  isOpenStage,
+  canFollowUp,
   type Activity,
   type Lead,
   type LeadDetail,
@@ -73,7 +78,7 @@ const dateLabel = (value: string) =>
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-const active = (lead: Lead) => lead.stage !== "won" && lead.stage !== "lost";
+const active = (lead: Lead) => isOpenStage(lead.stage);
 const initials = (name: string) =>
   name
     .split(/\s+/)
@@ -121,6 +126,7 @@ export default function App() {
   const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
   const [view, setView] = useState<View>(currentView);
   const [search, setSearch] = useState("");
+  const [showLost, setShowLost] = useState(false);
   const [source, setSource] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -131,6 +137,7 @@ export default function App() {
   const [movingId, setMovingId] = useState<string | null>(null);
   const [clock, setClock] = useState(Date.now());
   function navigate(next: View) {
+    if (next === "pipeline") setShowLost(false);
     setView(next);
     window.location.hash = next;
   }
@@ -174,13 +181,17 @@ export default function App() {
       (!source || l.source === source),
   );
   const open = leads.filter(active);
-  const won = leads.filter((l) => l.stage === "won");
+  const won = leads.filter((l) => isConvertedStage(l.stage));
+  const lost = filtered.filter((l) => l.stage === "lost");
   const closed = leads.filter((l) => !active(l));
-  const overdue = open.filter(
-    (l) => l.nextContactAt && Date.parse(l.nextContactAt) < clock,
+  const overdue = leads.filter(
+    (l) =>
+      canFollowUp(l.stage) &&
+      l.nextContactAt &&
+      Date.parse(l.nextContactAt) < clock,
   );
   const scheduled = filtered
-    .filter((l) => active(l) && l.nextContactAt)
+    .filter((l) => canFollowUp(l.stage) && l.nextContactAt)
     .sort(
       (a, b) => Date.parse(a.nextContactAt!) - Date.parse(b.nextContactAt!),
     );
@@ -426,6 +437,20 @@ export default function App() {
                 }
               />
               <Metric
+                label="Primera compra"
+                value={String(leads.filter((l) => l.stage === "won").length)}
+                icon={<Check size={19} />}
+                foot="Clientes en la etapa de primera compra"
+              />
+              <Metric
+                label="Clientes recurrentes"
+                value={String(
+                  leads.filter((l) => l.stage === "recurring").length,
+                )}
+                icon={<Users size={19} />}
+                foot="Clasificados como compradores recurrentes"
+              />
+              <Metric
                 label="Seguimientos vencidos"
                 value={String(overdue.length)}
                 icon={<Clock3 size={19} />}
@@ -456,17 +481,27 @@ export default function App() {
                 <div>
                   <h2>
                     {view === "pipeline"
-                      ? "Tu embudo de ventas"
+                      ? showLost
+                        ? "Oportunidades perdidas"
+                        : "Tu embudo de ventas"
                       : view === "followups"
                         ? "Agenda de seguimiento"
                         : "Todos tus contactos"}{" "}
                     <span>
-                      {view === "followups" ? scheduled.length : leads.length}
+                      {view === "followups"
+                        ? scheduled.length
+                        : view === "pipeline"
+                          ? showLost
+                            ? lost.length
+                            : leads.filter((l) => l.stage !== "lost").length
+                          : leads.length}
                     </span>
                   </h2>
                   <p>
                     {view === "pipeline"
-                      ? "Arrastra una tarjeta o cambia su etapa. Cada movimiento queda en el historial."
+                      ? showLost
+                        ? "Conserva el motivo y el historial; recupera un contacto si vuelve a interesarse."
+                        : "Ocho etapas para acompañar cada lead. Arrastra las tarjetas o cambia su etapa; desliza para ver todo el recorrido."
                       : view === "followups"
                         ? "Ordenados por la fecha del próximo contacto."
                         : "Toda tu información comercial en un solo lugar."}
@@ -510,6 +545,22 @@ export default function App() {
                       <option key={s}>{s}</option>
                     ))}
                 </select>
+                {view === "pipeline" && (
+                  <button
+                    className={`secondary lost-toggle ${showLost ? "selected" : ""}`}
+                    aria-label={
+                      showLost
+                        ? "Ver embudo de ocho etapas"
+                        : "Ver oportunidades perdidas"
+                    }
+                    aria-pressed={showLost}
+                    onClick={() => setShowLost(!showLost)}
+                  >
+                    {showLost
+                      ? "Volver al embudo"
+                      : `Perdidas (${lost.length})`}
+                  </button>
+                )}
                 <div className="view-toggle">
                   <button
                     className={view === "pipeline" ? "chosen" : ""}
@@ -532,9 +583,9 @@ export default function App() {
                   <LoaderCircle className="spin" />
                   <p>Cargando tu espacio…</p>
                 </div>
-              ) : view === "pipeline" ? (
+              ) : view === "pipeline" && !showLost ? (
                 <div className="kanban">
-                  {stages.map((stage) => {
+                  {pipelineStages.map((stage) => {
                     const items = filtered.filter((l) => l.stage === stage);
                     return (
                       <section
@@ -556,7 +607,9 @@ export default function App() {
                         <div className="column-heading">
                           <div>
                             <span className="stage-dot" />
-                            <h3>{settings.stageLabels[stage]}</h3>
+                            <h3 title={stageHints[stage]}>
+                              {settings.stageLabels[stage]}
+                            </h3>
                             <span className="column-count">{items.length}</span>
                           </div>
                           <button
@@ -596,9 +649,9 @@ export default function App() {
                                 {stage === "new"
                                   ? "Aquí empieza una nueva conversación"
                                   : stage === "won"
-                                    ? "Aquí celebraremos los cierres"
-                                    : stage === "lost"
-                                      ? "Cada resultado deja un aprendizaje"
+                                    ? "Aquí celebraremos la primera compra"
+                                    : stage === "recurring"
+                                      ? "Aquí acompañaremos las compras repetidas"
                                       : "Espacio para el siguiente paso"}
                               </p>
                             </div>
@@ -608,6 +661,38 @@ export default function App() {
                     );
                   })}
                 </div>
+              ) : view === "pipeline" ? (
+                <section
+                  className="lost-opportunities"
+                  aria-label="Oportunidades perdidas"
+                >
+                  {lost.length ? (
+                    <div className="lost-cards">
+                      {lost.map((lead) => (
+                        <div key={lead.id}>
+                          <LeadCard
+                            lead={lead}
+                            clock={clock}
+                            labels={settings.stageLabels}
+                            moving={Boolean(movingId)}
+                            onMove={(stage) => void moveLead(lead, stage)}
+                            onClick={() => setSelected(lead.id)}
+                          />
+                          <p className="lost-reason">
+                            {lead.lostReason ||
+                              "Motivo de pérdida sin registrar"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Empty
+                      icon={<Users size={26} />}
+                      title="Sin oportunidades perdidas"
+                      text="Los contactos que cierres como perdidos conservan aquí sus datos y su historial."
+                    />
+                  )}
+                </section>
               ) : view === "followups" ? (
                 <div className="followup-list">
                   {scheduled.length ? (
@@ -704,28 +789,31 @@ export default function App() {
                   )}
                 </div>
               )}
-              {!loading && !leads.length && view === "pipeline" && (
-                <div className="first-step">
-                  <span className="first-step-icon">
-                    <MessageSquare size={23} />
-                  </span>
-                  <div>
-                    <strong>Todo empieza con una conversación.</strong>
-                    <p>
-                      Agrega tu primera oportunidad y define cuándo volver a
-                      contactar.
-                    </p>
+              {!loading &&
+                !leads.length &&
+                view === "pipeline" &&
+                !showLost && (
+                  <div className="first-step">
+                    <span className="first-step-icon">
+                      <MessageSquare size={23} />
+                    </span>
+                    <div>
+                      <strong>Todo empieza con una conversación.</strong>
+                      <p>
+                        Agrega tu primera oportunidad y define cuándo volver a
+                        contactar.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setInitialStage("new");
+                        setModal("create");
+                      }}
+                    >
+                      Agregar contacto <ArrowRight size={17} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      setInitialStage("new");
-                      setModal("create");
-                    }}
-                  >
-                    Agregar contacto <ArrowRight size={17} />
-                  </button>
-                </div>
-              )}
+                )}
             </section>
           )}
           <footer className="page-footer">
@@ -873,7 +961,7 @@ function LeadCard({
   onClick: () => void;
 }) {
   const late =
-    active(lead) &&
+    canFollowUp(lead.stage) &&
     lead.nextContactAt &&
     Date.parse(lead.nextContactAt) < clock;
   return (
@@ -895,7 +983,7 @@ function LeadCard({
         <strong className="card-value">
           {currency(lead.value)} <small>valor estimado</small>
         </strong>
-        {lead.nextContactAt && active(lead) && (
+        {lead.nextContactAt && canFollowUp(lead.stage) && (
           <div className={`card-followup ${late ? "late" : ""}`}>
             <Clock3 size={13} />
             {late ? "Seguimiento vencido" : dateLabel(lead.nextContactAt)}
@@ -1129,6 +1217,7 @@ function LeadFields({
           }
         />
       </Field>
+      <p className="form-hint stage-hint">{stageHints[input.stage]}</p>
       {input.stage === "lost" && (
         <Field label="Motivo de pérdida">
           <input
@@ -1222,14 +1311,18 @@ function SettingsForm({
   return (
     <Modal
       title="Etapas de tu proceso"
-      subtitle="Estos nombres iniciales son una propuesta. Ajústalos a tu operación."
+      subtitle="Ocho etapas comerciales y un cierre separado para oportunidades perdidas."
       onClose={onClose}
     >
       <form onSubmit={submit}>
         <div className="settings-fields">
           {stages.map((stage, i) => (
             <Field
-              label={`${i + 1}. ${stage === "won" ? "Cierre ganado" : stage === "lost" ? "Cierre perdido" : "Etapa abierta"}`}
+              label={
+                stage === "lost"
+                  ? "Cierre: oportunidad perdida"
+                  : `${i + 1}. ${defaultLabels[stage]}`
+              }
               key={stage}
             >
               <input
@@ -1244,8 +1337,10 @@ function SettingsForm({
           ))}
         </div>
         <p className="form-hint">
-          Las últimas dos etapas representan ventas ganadas y perdidas para
-          calcular la tasa de cierre.
+          Primera compra y cliente recurrente cuentan como conversiones, sin
+          duplicar al mismo lead. Las oportunidades perdidas quedan fuera de las
+          ocho columnas. Una espera se gestiona con fecha de seguimiento,
+          conservando su etapa.
         </p>
         {error && (
           <p role="alert" className="form-error">

@@ -5,7 +5,7 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 ## Lo que funciona
 
 - Secciones independientes de **Resumen** y **Embudo de ventas** en el sidebar. El resumen reúne indicadores, seguimientos y oportunidades recientes; el embudo conserva el Kanban.
-- Tablero Kanban con cinco etapas configurables, arrastrar tarjetas y selector de etapa. Cada movimiento queda en el historial. La propuesta comercial de ocho etapas está documentada y aún no sustituye las actuales.
+- Tablero Kanban con ocho etapas comerciales configurables: nuevo lead, atención, información enviada, interés confirmado, muestra, cierre del pedido, primera compra y recurrencia. Cada movimiento queda en el historial. Las oportunidades perdidas se consultan aparte y se pueden recuperar.
 - Apertura de WhatsApp para atención manual de contactos con indicativo internacional; sin sincronización automática.
 - Registro de contacto, canal, campaña, responsable y valor estimado opcional, sin moneda asumida.
 - Notas e historial, agenda de seguimiento, búsqueda y exportación CSV.
@@ -68,7 +68,7 @@ npm run check
 npm run test:e2e
 ```
 
-`check` compila TypeScript y Vite y ejecuta trece pruebas de API, persistencia, bot y adaptador Meta. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, cambio de etapa, notas, recarga, conversación del bot y tamaño móvil. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las imágenes de comprobación se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png` y `/tmp/almo-crm-mobile.png`.
+`check` compila TypeScript y Vite y ejecuta quince pruebas de API, persistencia, bot y adaptador Meta. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, las ocho etapas, pérdida y recuperación, métricas de primera compra y recurrencia, notas, recarga, conversación del bot y tamaño móvil. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las imágenes de comprobación se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png` y `/tmp/almo-crm-mobile.png`.
 
 ## Antes de atender clientes reales
 
@@ -77,3 +77,17 @@ Esta versión es **un entorno de desarrollo de un solo equipo, sin inicio de ses
 El asistente es un flujo determinista, no un modelo generativo. Permite probar la conversación sin pagar una API de IA y sin inventar respuestas sobre el negocio. Los seguimientos por fecha son internos; aún no se mandan mensajes proactivos ni plantillas de WhatsApp. Las muestras siempre necesitan confirmación humana y la venta se marca manualmente. No hay una mejora de conversión medida todavía.
 
 Consulta [las decisiones y los pendientes del negocio](docs/PRODUCTO.md).
+
+## Actualizar una copia existente
+
+Detén el servidor con Ctrl+C y ejecuta desde la carpeta del CRM:
+
+```powershell
+git pull --ff-only
+npm.cmd run build
+npm.cmd run review
+```
+
+La ampliación del embudo se aplica al arrancar. Conserva los identificadores de las etapas anteriores, los leads, las notas, los seguimientos y las etiquetas personalizadas. Añade las etapas nuevas y actualiza únicamente los nombres predeterminados antiguos. La actualización se registra una sola vez; no borres `data/crm.sqlite` para actualizar.
+
+Las ocho columnas se recorren horizontalmente. El botón **Perdidas** conserva los cierres negativos fuera del recorrido principal. Los cambios de etapa son manuales; ninguna muestra se aprueba ni ningún pedido se entrega automáticamente por mover una tarjeta.

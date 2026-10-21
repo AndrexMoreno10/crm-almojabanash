@@ -376,7 +376,7 @@ h1 {
 }
 .metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 33px;
 }
@@ -531,7 +531,7 @@ h1 {
 }
 .kanban {
   display: grid;
-  grid-template-columns: repeat(5, minmax(175px, 1fr));
+  grid-template-columns: repeat(8, minmax(190px, 1fr));
   gap: 12px;
   padding: 20px;
   overflow-x: auto;
@@ -1840,4 +1840,61 @@ textarea {
   .overview-panel .section-heading {
     flex-wrap: wrap;
   }
+}
+.stage-interested {
+  --stage-color: #a8b66f;
+}
+.stage-sample {
+  --stage-color: #d7a277;
+}
+.stage-closing {
+  --stage-color: #7d9faf;
+}
+.stage-recurring {
+  --stage-color: #527c62;
+}
+.column-heading {
+  align-items: flex-start;
+}
+.column-heading > div {
+  align-items: flex-start;
+}
+.column-heading h3 {
+  white-space: normal;
+  line-height: 1.5;
+}
+.column-heading .stage-dot {
+  margin-top: 5px;
+}
+.column-count {
+  flex-shrink: 0;
+}
+.lost-toggle {
+  font-size: 10px;
+  padding: 9px 10px;
+  white-space: nowrap;
+}
+.lost-toggle.selected {
+  background: #f7eee8;
+  border-color: #d7b7a6;
+}
+.lost-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 18px;
+  padding: 22px;
+}
+.lost-reason {
+  font-size: 11px;
+  color: #a37e68;
+  line-height: 1.7;
+  padding: 0 4px 8px;
+  overflow-wrap: anywhere;
+}
+.stage-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 11px;
+  background: #f6f8f0;
+  border-radius: 6px;
 }

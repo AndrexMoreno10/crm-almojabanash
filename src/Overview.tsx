@@ -6,7 +6,7 @@ import {
   LoaderCircle,
   Users,
 } from "lucide-react";
-import type { Lead, Stage } from "../shared/types";
+import { canFollowUp, type Lead, type Stage } from "../shared/types";
 
 interface Props {
   leads: Lead[];
@@ -33,10 +33,7 @@ export default function Overview({
   onFollowups,
 }: Props) {
   const scheduled = leads
-    .filter(
-      (lead) =>
-        lead.stage !== "won" && lead.stage !== "lost" && lead.nextContactAt,
-    )
+    .filter((lead) => canFollowUp(lead.stage) && lead.nextContactAt)
     .sort(
       (a, b) => Date.parse(a.nextContactAt!) - Date.parse(b.nextContactAt!),
     );

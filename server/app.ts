@@ -1,3 +1,4 @@
+import { migratePipelineSettings } from "./migrations.ts";
 import express from "express";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
@@ -34,6 +35,10 @@ const labelsSchema = z
         new: text(50).min(1),
         conversation: text(50).min(1),
         proposal: text(50).min(1),
+        interested: text(50).min(1),
+        sample: text(50).min(1),
+        closing: text(50).min(1),
+        recurring: text(50).min(1),
         won: text(50).min(1),
         lost: text(50).min(1),
       })
@@ -69,6 +74,7 @@ export function createApp(
   db.prepare("INSERT OR IGNORE INTO settings (id, data) VALUES (1, ?)").run(
     JSON.stringify({ stageLabels: defaultLabels }),
   );
+  migratePipelineSettings(db);
   const getSettings = () =>
     JSON.parse(
       (
@@ -256,7 +262,7 @@ export function createApp(
         activity(
           lead.id,
           "event",
-          `Etapa: ${getSettings().stageLabels[lead.stage]}`,
+          `Etapa: ${getSettings().stageLabels[before.stage]} → ${getSettings().stageLabels[lead.stage]}`,
         );
       if (before.nextContactAt !== lead.nextContactAt)
         activity(

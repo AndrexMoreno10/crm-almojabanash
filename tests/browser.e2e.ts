@@ -81,6 +81,21 @@ test(
           .count(),
         0,
       );
+      await page
+        .getByRole("region", { name: "Nuevo lead", exact: true })
+        .waitFor();
+      assert.equal(await page.locator(".kanban-column").count(), 8);
+      for (const name of [
+        "Nuevo lead",
+        "En atención",
+        "Información comercial enviada",
+        "Interés confirmado",
+        "Muestra en evaluación",
+        "Pedido en cierre",
+        "Primera compra realizada",
+        "Cliente recurrente",
+      ])
+        await page.getByRole("region", { name, exact: true }).waitFor();
       await page.reload();
       await page
         .getByRole("heading", { name: "Embudo de ventas", exact: true })
@@ -118,7 +133,7 @@ test(
         })
         .selectOption("conversation");
       await page
-        .getByRole("region", { name: "En conversación", exact: true })
+        .getByRole("region", { name: "En atención", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
         .waitFor();
       const alerts = await page.getByRole("alert").allTextContents();
@@ -169,10 +184,10 @@ test(
         }),
       });
       await card.dragTo(
-        page.getByRole("region", { name: "Nuevo contacto", exact: true }),
+        page.getByRole("region", { name: "Nuevo lead", exact: true }),
       );
       await page
-        .getByRole("region", { name: "Nuevo contacto", exact: true })
+        .getByRole("region", { name: "Nuevo lead", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
         .waitFor();
       await page
@@ -182,7 +197,7 @@ test(
         })
         .selectOption("conversation");
       await page
-        .getByRole("region", { name: "En conversación", exact: true })
+        .getByRole("region", { name: "En atención", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
         .waitFor();
       await page.reload();
@@ -210,7 +225,103 @@ test(
         ).length,
         4,
       );
+      const stageSelect = () =>
+        page.getByRole("combobox", {
+          name: "Etapa de Hotel de prueba",
+          exact: true,
+        });
+      await stageSelect().selectOption("lost");
+      await page
+        .getByRole("button", {
+          name: "Ver oportunidades perdidas",
+          exact: true,
+        })
+        .click();
+      await page
+        .getByRole("region", { name: "Oportunidades perdidas", exact: true })
+        .getByRole("heading", { name: "Hotel de prueba", exact: true })
+        .waitFor();
+      await stageSelect().selectOption("interested");
+      await page
+        .getByRole("heading", {
+          name: "Sin oportunidades perdidas",
+          exact: true,
+        })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Ver embudo de ocho etapas", exact: true })
+        .click();
+      for (const [stage, label] of [
+        ["sample", "Muestra en evaluación"],
+        ["closing", "Pedido en cierre"],
+        ["won", "Primera compra realizada"],
+      ]) {
+        await stageSelect().selectOption(stage);
+        await page
+          .getByRole("region", { name: label, exact: true })
+          .getByRole("heading", { name: "Hotel de prueba", exact: true })
+          .waitFor();
+      }
       await page.getByRole("button", { name: "Resumen", exact: true }).click();
+      assert.equal(
+        await page
+          .locator("article.metric")
+          .filter({ hasText: "Clientes en la etapa de primera compra" })
+          .locator("strong")
+          .innerText(),
+        "1",
+      );
+      await page
+        .getByRole("button", { name: "Embudo de ventas", exact: true })
+        .click();
+      await stageSelect().selectOption("recurring");
+      await page
+        .getByRole("region", { name: "Cliente recurrente", exact: true })
+        .getByRole("heading", { name: "Hotel de prueba", exact: true })
+        .waitFor();
+      await page.reload();
+      await page
+        .getByRole("region", { name: "Cliente recurrente", exact: true })
+        .getByRole("heading", { name: "Hotel de prueba", exact: true })
+        .waitFor();
+      await page.getByRole("button", { name: "Resumen", exact: true }).click();
+      assert.equal(
+        await page
+          .locator("article.metric")
+          .filter({ hasText: "Clientes en la etapa de primera compra" })
+          .locator("strong")
+          .innerText(),
+        "0",
+      );
+      assert.equal(
+        await page
+          .locator("article.metric")
+          .filter({ hasText: "Clasificados como compradores recurrentes" })
+          .locator("strong")
+          .innerText(),
+        "1",
+      );
+      assert.equal(
+        await page
+          .locator("article.metric")
+          .filter({ hasText: "Oportunidades abiertas" })
+          .locator("strong")
+          .innerText(),
+        "0",
+      );
+      assert.equal(
+        await page
+          .locator("article.metric")
+          .filter({ hasText: "Tasa de cierre" })
+          .locator("strong")
+          .innerText(),
+        "100%",
+      );
+      await page.screenshot({
+        path: "/tmp/almo-crm-overview.png",
+        fullPage: true,
+      });
+
       await page
         .getByRole("region", { name: /Seguimientos por atender/ })
         .getByRole("button")

@@ -36,17 +36,18 @@ La calificación se puede probar íntegramente en el simulador. El adaptador rea
 - Horarios y condiciones concretas de entrega. Los radios de los anuncios no definen entrega.
 - Catálogo, precios, mínimos, disponibilidad, pagos y condiciones de entrega.
 - Condiciones de muestras y aprobación del dueño o administrador. El usuario propone «dar unas 5» para presentar un piloto; falta aclarar si son unidades por prospecto o cantidad de prospectos, y su costo. No es una oferta comercial aprobada.
-- Criterios definitivos de cierre y recurrencia. El usuario quiere identificar compradores con cantidades diarias, semanales o mensuales. Se propuso separar primera venta de cliente recurrente, sin automatizar una definición todavía no acordada.
+- El usuario aprobó las ocho etapas propuestas. Primera compra corresponde al primer pedido entregado y recurrencia a compras repetidas; ambas se clasifican manualmente. Falta registrar pedidos, frecuencias y cantidades en un módulo estructurado; hoy se documentan en notas.
 - App de Meta y acceso de desarrollador. La captura muestra acceso total al portafolio comercial; falta comprobar la aplicación y la elegibilidad de coexistencia con el número actual antes de activar Cloud API.
 - Frecuencia, horarios y límites de los seguimientos; política de tratamiento de datos y retención que aplicará al negocio.
 - Responsable y plazo de atención humana. La aplicación no promete tiempos de respuesta.
 
 ## Métricas de esta versión
 
-- Oportunidades abiertas: todas salvo ganadas y perdidas.
+- Oportunidades abiertas: las seis etapas anteriores a primera compra; excluye primera compra, recurrentes y perdidas.
 - Valor en oportunidades: suma de valores estimados manuales de las abiertas. No es ingreso ni tiene moneda inferida.
-- Tasa de cierre: ganadas / (ganadas + perdidas). Muestra el número de cierres que la respalda; sin cierres muestra un guion.
-- Seguimientos vencidos: abiertas con una fecha anterior al momento actual.
+- Tasa de cierre: (primera compra + recurrentes) / (primera compra + recurrentes + perdidas), contando cada lead una sola vez según su etapa actual. Sin cierres muestra un guion.
+- Primera compra y clientes recurrentes tienen contadores separados según la etapa actual. Un recurrente no cuenta simultáneamente en primera compra.
+- Seguimientos vencidos: contactos no perdidos con una fecha anterior al momento actual. Incluye clientes que ya compraron para permitir el seguimiento posterior a la venta.
 
 Antes de afirmar una mejora de resultados deben medirse los contactos por campaña y período, tiempo de primera atención, solicitudes y entregas de muestras, primeros pedidos y sus definiciones de cierre. La versión actual no importa estadísticas ni atribución de anuncios y no sustituye esa medición.
 
@@ -58,7 +59,7 @@ Desde el detalle del lead se puede abrir WhatsApp con un teléfono que incluya i
 
 ## Medición propuesta para el piloto de muestras
 
-Separar una primera venta de una relación recurrente evita contar una solicitud de muestra como cliente cerrado. Propuesta para acordar: primera venta cuando exista un primer pedido real; cliente recurrente cuando haya compras repetidas o un acuerdo de suministro respaldado por pedidos. La frecuencia y la cantidad deben registrarse según cada cliente, sin imponer el mismo mínimo diario, semanal o mensual a todos.
+Separar una primera venta de una relación recurrente evita contar una solicitud de muestra como cliente cerrado. En las etapas aprobadas se clasifica primera compra al entregar el primer pedido, y cliente recurrente cuando ya repite compras. La clasificación es manual y debe respaldarse con hechos registrados por el equipo. La frecuencia y la cantidad deben registrarse según cada cliente, sin imponer el mismo mínimo diario, semanal o mensual a todos.
 
 El usuario confirmó que el tamaño del piloto de muestras sigue por definir. Su tamaño y sus condiciones no están aprobados. Comparar solicitudes, muestras efectivamente entregadas, primeros pedidos y repetición de compras antes de afirmar que el piloto mejora el cierre. No se garantiza un aumento de ventas.
 
@@ -69,9 +70,9 @@ El usuario confirmó que el tamaño del piloto de muestras sigue por definir. Su
 - Se conserva la sección al recargar y se puede navegar con Atrás/Adelante del navegador.
 - Al crear una oportunidad, el CRM abre el embudo para continuar su gestión.
 
-## Propuesta de ocho etapas comerciales
+## Ocho etapas comerciales implementadas
 
-El usuario pidió recomendar siete u ocho etapas. La siguiente es una propuesta de proceso; no sustituye todavía las cinco etapas actuales de la aplicación:
+El usuario aprobó incorporar estas ocho etapas al CRM. Están en el Kanban, los formularios y la API; cada transición conserva la etapa anterior y la nueva en el historial:
 
 1. **Nuevo lead**: llega el contacto y todavía no ha recibido atención.
 2. **En atención**: se respondió y se está entendiendo su necesidad; se resuelven ubicación y dudas iniciales.
@@ -79,7 +80,13 @@ El usuario pidió recomendar siete u ocho etapas. La siguiente es una propuesta 
 4. **Interés confirmado**: el cliente expresa intención de avanzar y se conoce su necesidad; enviar información por sí solo no demuestra interés.
 5. **Muestra en evaluación**: el equipo aprobó una muestra y se coordina o espera la valoración. Es opcional y se puede saltar; no implica que el piloto ni sus condiciones estén aprobados.
 6. **Pedido en cierre**: se concretan cantidades, precio, entrega y pago del primer pedido.
-7. **Primera compra realizada**: existe una compra real. Se propuso contarla al entregar el primer pedido; la regla definitiva sigue por acordar.
+7. **Primera compra realizada**: el primer pedido se entregó. El equipo verifica la condición antes de clasificar manualmente al lead.
 8. **Cliente recurrente**: ya repite compras y se conocen frecuencia y cantidades habituales, según cada cliente.
 
 «Pendiente» no reemplaza la etapa: conservar la fase, responsable, próxima fecha y motivo de espera. Distinguir ausencia de respuesta de una oportunidad expresamente perdida. Los hitos de catálogo, precios y muestra requieren sus fechas y evidencias; su registro estructurado sigue pendiente, aunque hoy se pueden documentar en notas e historial.
+
+## Compatibilidad con la versión anterior
+
+Las claves `new`, `conversation`, `proposal`, `won` y `lost` se conservan para mantener los leads en su fase existente. Los nombres predeterminados pasan a Nuevo lead, En atención, Información comercial enviada, Primera compra realizada y Oportunidad perdida. Las etiquetas personalizadas se conservan. Se añaden Interés confirmado, Muestra en evaluación, Pedido en cierre y Cliente recurrente.
+
+La ampliación de etiquetas se registra con una migración transaccional y no vuelve a ejecutarse después. No reescribe los leads ni el historial anterior. Un cierre antiguo ganado conserva su clasificación como primera compra; el usuario puede revisarla manualmente. Las oportunidades perdidas tienen una vista propia y pueden volver al embudo sin perder su historial. Las muestras siguen dependiendo de aprobación humana y de condiciones comerciales aún por definir.
