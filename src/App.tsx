@@ -1,4 +1,11 @@
 import Overview from "./Overview";
+import AttentionPanel from "./AttentionPanel";
+import {
+  attentionLabels,
+  matchesAttention,
+  type AttentionFilter,
+  type AttentionSummary,
+} from "../shared/attention";
 import { business, whatsappContactUrl } from "../shared/business";
 import {
   Children,
@@ -33,7 +40,6 @@ import {
   Plus,
   Search,
   Settings2,
-  Sparkles,
   Target,
   TrendingUp,
   Users,
@@ -72,8 +78,16 @@ const viewLabels: Record<View, string> = {
   assistant: "Asistente",
 };
 function currentView(): View {
-  const hash = window.location.hash.slice(1);
+  const hash = window.location.hash.slice(1).split("?")[0];
   return views.includes(hash as View) ? (hash as View) : "overview";
+}
+function currentAttention(): AttentionFilter | null {
+  const value = new URLSearchParams(window.location.hash.split("?")[1]).get(
+    "attention",
+  );
+  return value && Object.hasOwn(attentionLabels, value)
+    ? (value as AttentionFilter)
+    : null;
 }
 const currency = (value: number) =>
   new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(value);
@@ -129,6 +143,12 @@ export default function App() {
   });
   const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
   const [view, setView] = useState<View>(currentView);
+  const [attentionFilter, setAttentionFilter] =
+    useState<AttentionFilter | null>(currentAttention);
+  const [attention, setAttention] = useState<AttentionSummary>({
+    unreviewedIds: [],
+  });
+  const unreviewed = new Set(attention.unreviewedIds);
   const [search, setSearch] = useState("");
   const [showLost, setShowLost] = useState(false);
   const [source, setSource] = useState("");
@@ -147,14 +167,23 @@ export default function App() {
   const boardRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [clock, setClock] = useState(Date.now());
-  function navigate(next: View) {
+  function navigate(next: View, filter: AttentionFilter | null = null) {
     setMenuOpen(false);
+    setAttentionFilter(filter);
     if (next === "pipeline") setShowLost(false);
     setView(next);
-    window.location.hash = next;
+    window.location.hash = filter ? `${next}?attention=${filter}` : next;
+  }
+  function openAttention(filter: AttentionFilter) {
+    setSearch("");
+    setSource("");
+    navigate("contacts", filter);
   }
   useEffect(() => {
-    const onHashChange = () => setView(currentView());
+    const onHashChange = () => {
+      setView(currentView());
+      setAttentionFilter(currentAttention());
+    };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -204,11 +233,13 @@ export default function App() {
   }, [menuOpen]);
   async function load() {
     try {
-      const [data, config, meta] = await Promise.all([
+      const [data, config, meta, attentionData] = await Promise.all([
         api<Lead[]>("/leads"),
         api<Settings>("/settings"),
         api<MetaStatus>("/integrations/meta/status"),
+        api<AttentionSummary>("/attention"),
       ]);
+      setAttention(attentionData);
       setMetaStatus(meta);
       setLeads(data);
       setSettings(config);
@@ -231,6 +262,7 @@ export default function App() {
   }, [notice]);
   const filtered = leads.filter(
     (l) =>
+      (!attentionFilter || matchesAttention(l, attentionFilter, unreviewed)) &&
       [l.name, l.phone, l.email, l.campaign, l.owner].some((v) =>
         v.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
       ) &&
@@ -344,7 +376,9 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
   return (
-    <div className={`app-shell ${menuOpen ? "nav-open" : ""}`}>
+    <div
+      className={`app-shell ${menuOpen ? "nav-open" : ""} ${view === "pipeline" ? "pipeline-workspace" : ""}`}
+    >
       <a
         className="skip-link"
         href="#main-content"
@@ -520,9 +554,11 @@ export default function App() {
         <div className="page-content">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">
-                ALMOJÁBANAS HUILENSES <span>/ COMERCIAL</span>
-              </div>
+              {view !== "pipeline" && (
+                <div className="eyebrow">
+                  ALMOJÁBANAS HUILENSES <span>/ COMERCIAL</span>
+                </div>
+              )}
               <h1>
                 {view === "overview"
                   ? "Panel comercial"
@@ -534,17 +570,29 @@ export default function App() {
                         ? "Asistente comercial"
                         : "Contactos"}
               </h1>
-              <p>
-                {view === "overview"
-                  ? "Oportunidades, próximos contactos y resultados de tu equipo."
-                  : view === "pipeline"
-                    ? "Gestiona cada oportunidad desde el primer mensaje hasta la compra recurrente."
+              {view === "pipeline" && (
+                <span className="pipeline-total">
+                  {loading
+                    ? "…"
+                    : leads.filter((lead) =>
+                        showLost
+                          ? lead.stage === "lost"
+                          : lead.stage !== "lost",
+                      ).length}{" "}
+                  leads
+                </span>
+              )}
+              {view !== "pipeline" && (
+                <p>
+                  {view === "overview"
+                    ? "Oportunidades, próximos contactos y resultados de tu equipo."
                     : view === "followups"
                       ? "Retoma las conversaciones pendientes y mantén el ritmo de tu equipo."
                       : view === "assistant"
                         ? "Prueba cómo acompañaremos a los interesados en compras al por mayor."
                         : "Encuentra la información y el contexto de cada oportunidad."}
-              </p>
+                </p>
+              )}
             </div>
             <button
               className="primary"
@@ -561,6 +609,15 @@ export default function App() {
               {error}
               <button onClick={() => void load()}>Reintentar</button>
             </div>
+          )}
+          {view === "overview" && (
+            <AttentionPanel
+              leads={leads}
+              unreviewed={unreviewed}
+              loading={loading}
+              unavailable={Boolean(error)}
+              onFilter={openAttention}
+            />
           )}
           {view === "overview" && (
             <section className="metrics" aria-label="Resumen comercial">
@@ -652,8 +709,12 @@ export default function App() {
           ) : view === "assistant" ? (
             <Assistant status={metaStatus} />
           ) : (
-            <section className="board-section">
-              <div className="section-heading">
+            <section
+              className={`board-section ${view === "pipeline" ? "pipeline-board" : ""}`}
+            >
+              <div
+                className={view === "pipeline" ? "sr-only" : "section-heading"}
+              >
                 <div>
                   <h2>
                     {view === "pipeline"
@@ -662,7 +723,9 @@ export default function App() {
                         : "Tu embudo de ventas"
                       : view === "followups"
                         ? "Agenda de seguimiento"
-                        : "Todos tus contactos"}{" "}
+                        : attentionFilter
+                          ? attentionLabels[attentionFilter]
+                          : "Todos tus contactos"}{" "}
                     <span>
                       {view === "followups"
                         ? scheduled.length
@@ -670,7 +733,7 @@ export default function App() {
                           ? showLost
                             ? lost.length
                             : leads.filter((l) => l.stage !== "lost").length
-                          : leads.length}
+                          : filtered.length}
                     </span>
                   </h2>
                   <p>
@@ -683,15 +746,27 @@ export default function App() {
                         : "Toda tu información comercial en un solo lugar."}
                   </p>
                 </div>
-                <button
-                  className="text-button"
-                  onClick={exportCsv}
-                  disabled={!exportable.length}
-                >
-                  <ArrowDownToLine size={16} /> Exportar
-                </button>
+                {view !== "pipeline" && (
+                  <button
+                    className="text-button"
+                    onClick={exportCsv}
+                    disabled={!exportable.length}
+                  >
+                    <ArrowDownToLine size={16} /> Exportar
+                  </button>
+                )}
               </div>
               <div className="toolbar">
+                {attentionFilter && (
+                  <button
+                    className="attention-filter secondary"
+                    aria-label="Quitar filtro de atención"
+                    onClick={() => navigate(view)}
+                  >
+                    {attentionLabels[attentionFilter]}
+                    <X size={14} />
+                  </button>
+                )}
                 <div className="search-box">
                   <Search size={17} />
                   <input
@@ -776,6 +851,15 @@ export default function App() {
                     </button>
                   </div>
                 )}
+                {view === "pipeline" && (
+                  <button
+                    className="text-button pipeline-export"
+                    onClick={exportCsv}
+                    disabled={!exportable.length}
+                  >
+                    <ArrowDownToLine size={16} /> Exportar
+                  </button>
+                )}
                 <div className="view-toggle">
                   <button
                     className={view === "pipeline" ? "chosen" : ""}
@@ -845,11 +929,12 @@ export default function App() {
                             <Plus size={16} />
                           </button>
                         </div>
-                        <div className="column-value">
-                          {currency(items.reduce((sum, l) => sum + l.value, 0))}{" "}
-                          <span>valor estimado</span>
-                        </div>
-                        <div className="column-cards">
+                        <div
+                          className="column-cards"
+                          tabIndex={items.length ? 0 : undefined}
+                          role="group"
+                          aria-label={`Leads en ${settings.stageLabels[stage]}`}
+                        >
                           {items.map((lead) => (
                             <LeadCard
                               key={lead.id}
@@ -1021,31 +1106,6 @@ export default function App() {
                   )}
                 </div>
               )}
-              {!loading &&
-                !leads.length &&
-                view === "pipeline" &&
-                !showLost && (
-                  <div className="first-step">
-                    <span className="first-step-icon">
-                      <MessageSquare size={23} />
-                    </span>
-                    <div>
-                      <strong>Registra tu primera oportunidad</strong>
-                      <p>
-                        Añade el contacto, asigna un responsable y programa el
-                        seguimiento.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setInitialStage("new");
-                        setModal("create");
-                      }}
-                    >
-                      Agregar contacto <ArrowRight size={17} />
-                    </button>
-                  </div>
-                )}
             </section>
           )}
           <footer className="page-footer">
@@ -1100,6 +1160,12 @@ export default function App() {
           labels={settings.stageLabels}
           onClose={() => setSelected(null)}
           onChange={() => saved("Cambios guardados")}
+          onReviewed={(id) =>
+            setAttention((before) => ({
+              ...before,
+              unreviewedIds: before.unreviewedIds.filter((item) => item !== id),
+            }))
+          }
         />
       )}
     </div>
@@ -1207,47 +1273,70 @@ function LeadCard({
         e.dataTransfer.effectAllowed = "move";
       }}
     >
-      <button className="lead-card-open" onClick={onClick}>
-        <div className="card-top">
-          <span className="lead-initials">{initials(lead.name)}</span>
-          <span className="source-tag">{lead.source || "Sin canal"}</span>
+      <button
+        className="lead-card-open"
+        onClick={onClick}
+        aria-label={`Ver detalle de ${lead.name}`}
+      >
+        <div className="card-identity">
+          <span className="lead-initials" aria-hidden="true">
+            {initials(lead.name)}
+          </span>
+          <div className="card-summary">
+            <h4 title={lead.name}>{lead.name}</h4>
+            <div className="card-channel">
+              {lead.source && <span title={lead.source}>{lead.source}</span>}
+              {lead.phone && <span title={lead.phone}>{lead.phone}</span>}
+            </div>
+          </div>
           <ArrowUpRight size={15} />
         </div>
-        <h4>{lead.name}</h4>
-        <p>{lead.campaign || "Sin campaña asociada"}</p>
-        <strong className="card-value">
-          {currency(lead.value)} <small>valor estimado</small>
-        </strong>
         {lead.nextContactAt && canFollowUp(lead.stage) && (
-          <div className={`card-followup ${late ? "late" : ""}`}>
+          <div
+            className={`card-followup ${late ? "late" : ""}`}
+            title={dateLabel(lead.nextContactAt)}
+          >
             <Clock3 size={13} />
-            {late ? "Seguimiento vencido" : dateLabel(lead.nextContactAt)}
+            {late ? "Vencido · " : "Próximo · "}
+            {new Intl.DateTimeFormat("es-CO", {
+              day: "numeric",
+              month: "short",
+              hour: "numeric",
+              minute: "2-digit",
+            }).format(new Date(lead.nextContactAt))}
           </div>
         )}
-        <div className="card-bottom">
-          <span className="small-avatar">
-            {lead.owner ? initials(lead.owner) : "—"}
+        {lead.value > 0 && (
+          <span className="card-amount" title="Valor estimado">
+            Valor est. {currency(lead.value)}
           </span>
-          <span>{lead.owner || "Sin responsable"}</span>
-          <ChevronRight size={14} />
-        </div>
+        )}
       </button>
-      <label className="quick-stage">
-        <span>Etapa</span>
-        <select
-          aria-label={`Etapa de ${lead.name}`}
-          data-stage-lead={lead.id}
-          value={lead.stage}
-          disabled={moving}
-          onChange={(e) => onMove(e.target.value as Stage)}
-        >
-          {stages.map((stage) => (
-            <option key={stage} value={stage}>
-              {labels[stage]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="card-footer">
+        {lead.owner && (
+          <span className="card-owner" title={lead.owner}>
+            <Users size={13} />
+            <span>{lead.owner}</span>
+          </span>
+        )}
+        <label className="quick-stage">
+          <span className="sr-only">Etapa</span>
+          <select
+            aria-label={`Etapa de ${lead.name}`}
+            data-stage-lead={lead.id}
+            title={labels[lead.stage]}
+            value={lead.stage}
+            disabled={moving}
+            onChange={(e) => onMove(e.target.value as Stage)}
+          >
+            {stages.map((stage) => (
+              <option key={stage} value={stage}>
+                {labels[stage]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
     </article>
   );
 }
@@ -1303,9 +1392,13 @@ function Modal({
         if (previous?.isConnected && !previous.closest("[inert]")) {
           previous.focus();
         } else {
-          document
-            .querySelector<HTMLButtonElement>('[aria-label="Abrir menú"]')
-            ?.focus();
+          const menu = document.querySelector<HTMLButtonElement>(
+            '[aria-label="Abrir menú"]',
+          );
+          (menu?.getClientRects().length
+            ? menu
+            : document.getElementById("main-content")
+          )?.focus();
         }
       });
     };
@@ -1611,11 +1704,13 @@ function Detail({
   labels,
   onClose,
   onChange,
+  onReviewed,
 }: {
   id: string;
   labels: Record<Stage, string>;
   onClose: () => void;
   onChange: () => Promise<void>;
+  onReviewed: (id: string) => void;
 }) {
   const [conversation, setConversation] = useState<{
     session: import("../server/bot").BotSession | null;
@@ -1649,7 +1744,11 @@ function Detail({
     setDraft(input);
   }
   useEffect(() => {
-    void refresh().catch((e) => setError(e.message));
+    void (async () => {
+      await refresh();
+      await api(`/leads/${id}/review`, { method: "POST" });
+      onReviewed(id);
+    })().catch((e) => setError(e.message));
   }, [id]);
   async function save(e: FormEvent) {
     e.preventDefault();

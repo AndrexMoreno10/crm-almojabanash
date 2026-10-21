@@ -69,6 +69,10 @@ export function createApp(
       kind TEXT NOT NULL, body TEXT NOT NULL, createdAt TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS activities_lead ON activities(leadId, createdAt);
+    CREATE TABLE IF NOT EXISTS lead_reviews (
+      leadId TEXT PRIMARY KEY REFERENCES leads(id) ON DELETE CASCADE,
+      reviewedAt TEXT NOT NULL, lastInboundId TEXT
+    );
     CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL);
   `);
   db.prepare("INSERT OR IGNORE INTO settings (id, data) VALUES (1, ?)").run(
@@ -85,8 +89,7 @@ export function createApp(
     ) as Settings;
   const getLead = (id: string) =>
     db.prepare("SELECT * FROM leads WHERE id=?").get(id) as unknown as
-      | Lead
-      | undefined;
+      Lead | undefined;
   const activity = (leadId: string, kind: string, body: string) =>
     db
       .prepare(
@@ -166,6 +169,39 @@ export function createApp(
       db.prepare("SELECT * FROM leads ORDER BY updatedAt DESC, id").all(),
     ),
   );
+  // Tracks reviews inside this CRM, independently of WhatsApp read receipts or replies.
+  app.get("/api/attention", (_req, res) => {
+    const rows = db
+      .prepare(
+        `
+      SELECT l.id FROM leads l LEFT JOIN lead_reviews r ON r.leadId=l.id
+      WHERE l.stage <> 'lost' AND (
+        r.leadId IS NULL OR COALESCE(r.lastInboundId, '') <> COALESCE((
+          SELECT m.id FROM messages m WHERE m.leadId=l.id AND m.direction='inbound'
+          ORDER BY m.rowid DESC LIMIT 1
+        ), '')
+      ) ORDER BY l.createdAt, l.id
+    `,
+      )
+      .all() as { id: string }[];
+    res.json({ unreviewedIds: rows.map((row) => row.id) });
+  });
+  app.post("/api/leads/:id/review", (req, res) => {
+    const lead = getLead(req.params.id);
+    if (!lead) {
+      res.status(404).json({ error: "Oportunidad no encontrada" });
+      return;
+    }
+    const reviewedAt = new Date().toISOString();
+    db.prepare(
+      `
+      INSERT INTO lead_reviews (leadId,reviewedAt,lastInboundId)
+      VALUES (?, ?, (SELECT id FROM messages WHERE leadId=? AND direction='inbound' ORDER BY rowid DESC LIMIT 1))
+      ON CONFLICT(leadId) DO UPDATE SET reviewedAt=excluded.reviewedAt,lastInboundId=excluded.lastInboundId
+    `,
+    ).run(lead.id, reviewedAt, lead.id);
+    res.json({ leadId: lead.id, reviewedAt });
+  });
   app.get("/api/leads/:id", (req, res) => {
     const lead = getLead(req.params.id);
     if (!lead) {

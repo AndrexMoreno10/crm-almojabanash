@@ -7,9 +7,11 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 - Secciones independientes de **Resumen** y **Embudo de ventas** en el sidebar. El resumen reúne indicadores, seguimientos y oportunidades recientes; el embudo conserva el Kanban.
 - Interfaz en azul, naranja y blanco, tipografía Manrope alojada en el proyecto, navegación móvil con etiquetas y fichas divididas en información, actividad y conversación.
 - Tablero Kanban con ocho etapas comerciales configurables: nuevo lead, atención, información enviada, interés confirmado, muestra, cierre del pedido, primera compra y recurrencia. Cada movimiento queda en el historial. Las oportunidades perdidas se consultan aparte y se pueden recuperar.
+- Embudo con encabezado compacto, tarjetas más anchas y resumidas y desplazamiento independiente en cada etapa. Los campos vacíos y valores en cero se omiten en la tarjeta; la ficha conserva toda la información.
 - Apertura de WhatsApp para atención manual de contactos con indicativo internacional; sin sincronización automática.
 - Registro de contacto, canal, campaña, responsable y valor estimado opcional, sin moneda asumida.
 - Notas e historial, agenda de seguimiento, búsqueda y exportación CSV.
+- Resumen con accesos a leads sin revisar en CRM, primera atención pendiente, sin responsable y sin próximo contacto. Revisar una ficha se registra por separado de responder o avanzar de etapa.
 - Persistencia local con SQLite; las pruebas usan bases temporales separadas.
 - Simulador de un asistente guiado: permiso de seguimiento, tipo de comprador, cantidad, ciudad, nombre e interés en una muestra.
 - Pausa ante preguntas que requieren información comercial o un asesor. `SALIR` detiene el seguimiento automático.
@@ -70,7 +72,7 @@ npm run check
 npm run test:e2e
 ```
 
-`check` compila TypeScript y Vite y ejecuta veinte pruebas de API, persistencia, bot, Meta y sincronización Git, incluyendo la conservación de archivos ignorados. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, ocho etapas, pérdida y recuperación, indicadores, notas, filtros, exportación, recarga, conversación del bot y tamaño móvil. También ejecuta axe sobre las vistas principales para detectar problemas WCAG A/AA. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las capturas se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png`, `/tmp/almo-crm-mobile.png`, `/tmp/almo-crm-overview.png` y `/tmp/almo-crm-overview-mobile.png`.
+`check` compila TypeScript y Vite y ejecuta veintidós pruebas de API, persistencia, revisión de fichas, bot, Meta y sincronización Git, incluyendo la conservación de archivos ignorados. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, ocho etapas, pérdida y recuperación, indicadores, notas, filtros, exportación, recarga, conversación del bot y tamaño móvil. También ejecuta axe sobre las vistas principales para detectar problemas WCAG A/AA. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las capturas se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png`, `/tmp/almo-crm-mobile.png`, `/tmp/almo-crm-overview.png` y `/tmp/almo-crm-overview-mobile.png`.
 
 ## Antes de atender clientes reales
 
@@ -79,6 +81,8 @@ Esta versión es **un entorno de desarrollo de un solo equipo, sin inicio de ses
 El asistente es un flujo determinista, no un modelo generativo. Permite probar la conversación sin pagar una API de IA y sin inventar respuestas sobre el negocio. Los seguimientos por fecha son internos; aún no se mandan mensajes proactivos ni plantillas de WhatsApp. Las muestras siempre necesitan confirmación humana y la venta se marca manualmente. No hay una mejora de conversión medida todavía.
 
 Consulta [las decisiones y los pendientes del negocio](docs/PRODUCTO.md).
+
+Consulta [los criterios del dashboard](docs/DASHBOARD.md) para distinguir revisión, primera atención, seguimiento y conversión.
 
 La [auditoría del frontend](docs/FRONTEND-AUDIT.md) detalla los cambios visuales y de accesibilidad. GitHub Actions ejecuta compilación y pruebas en los pushes a main y pull requests. El despliegue queda pendiente de definir el proveedor y destino.
 

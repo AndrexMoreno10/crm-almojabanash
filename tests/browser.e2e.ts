@@ -421,12 +421,128 @@ test(
           lostReason: "No requiere producto por ahora",
         },
       });
+      const denseContacts = await Promise.all(
+        Array.from({ length: 9 }, (_, index) =>
+          page.request.post("http://127.0.0.1:3101/api/leads", {
+            data: {
+              name: `Contacto de prueba ${String(index + 1).padStart(2, "0")}`,
+              source: "WhatsApp",
+              phone: "+57 300 000 0000",
+            },
+          }),
+        ),
+      );
+      denseContacts.forEach((response) => assert.equal(response.status(), 201));
       await page
         .getByRole("button", { name: "Actualizar", exact: true })
         .click();
       await page
         .getByRole("heading", { name: longName, exact: true })
         .waitFor();
+      const newColumn = page.getByRole("region", {
+        name: "Nuevo lead",
+        exact: true,
+      });
+      assert.equal(
+        await newColumn.locator(".column-count").textContent(),
+        "10",
+      );
+      const layout = await newColumn.evaluate((column) => {
+        const list = column.querySelector(".column-cards")!;
+        const bounds = list.getBoundingClientRect();
+        const cards = Array.from(list.querySelectorAll(".lead-card")).map(
+          (card) => card.getBoundingClientRect(),
+        );
+        return {
+          scrolls: list.scrollHeight > list.clientHeight,
+          visibleCards: cards.filter(
+            (card) => card.top >= bounds.top && card.bottom <= bounds.bottom,
+          ).length,
+          maxHeight: Math.max(...cards.map((card) => card.height)),
+          minWidth: Math.min(...cards.map((card) => card.width)),
+          firstTop: cards[0].top,
+          pageOverflow: document.documentElement.scrollHeight > innerHeight + 2,
+        };
+      });
+      assert.ok(layout.scrolls, "Ten leads scroll within their own column");
+      assert.ok(
+        layout.visibleCards >= 4,
+        "At least four complete cards remain visible on desktop",
+      );
+      assert.ok(
+        layout.maxHeight < 170,
+        "Long names do not create oversized cards",
+      );
+      assert.ok(layout.minWidth >= 275, "Cards have enough horizontal space");
+      assert.ok(
+        layout.firstTop < 300,
+        "Leads appear above the fold after the compact toolbar",
+      );
+      assert.equal(
+        layout.pageOverflow,
+        false,
+        "Ten leads do not stretch the page",
+      );
+      const minimalCard = newColumn
+        .locator(".lead-card")
+        .filter({ hasText: "Contacto de prueba 01" });
+      assert.doesNotMatch(
+        (await minimalCard.textContent()) || "",
+        /Sin campaña|Sin responsable|valor estimado/,
+      );
+      const beforeScroll = await page.evaluate(() => scrollY);
+      await newColumn
+        .locator(".column-cards")
+        .evaluate((list) => (list.scrollTop = list.scrollHeight));
+      const longCard = newColumn.getByRole("button", {
+        name: `Ver detalle de ${longName}`,
+        exact: true,
+      });
+      await longCard.click();
+      await page
+        .getByRole("dialog")
+        .getByRole("heading", { name: longName, exact: true })
+        .waitFor();
+      await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+      assert.equal(await page.evaluate(() => scrollY), beforeScroll);
+      await newColumn
+        .locator(".column-cards")
+        .evaluate((list) => (list.scrollTop = 0));
+      await page.getByRole("button", { name: "Resumen", exact: true }).click();
+      const reviewAction = () =>
+        page.getByRole("button", { name: /^Sin revisar en CRM/ });
+      assert.equal(await reviewAction().locator("strong").textContent(), "9");
+      await reviewAction().click();
+      assert.match(page.url(), /contacts\?attention=unreviewed/);
+      assert.equal(await page.locator(".table-wrap tbody tr").count(), 9);
+      const reviewResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith("/review") &&
+          response.request().method() === "POST",
+      );
+      await page.getByRole("button", { name: /Contacto de prueba 01/ }).click();
+      assert.equal((await reviewResponse).status(), 200);
+      await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+      assert.equal(await page.locator(".table-wrap tbody tr").count(), 8);
+      await page.reload();
+      await page
+        .getByRole("heading", { name: "Sin revisar en CRM", exact: false })
+        .waitFor();
+      await page.locator(".table-wrap tbody tr").first().waitFor();
+      assert.equal(await page.locator(".table-wrap tbody tr").count(), 8);
+      await page.getByRole("button", { name: "Resumen", exact: true }).click();
+      assert.equal(await reviewAction().locator("strong").textContent(), "8");
+      await page
+        .getByRole("button", { name: /^Primera atención pendiente/ })
+        .click();
+      assert.equal(
+        await page.locator(".table-wrap tbody tr").count(),
+        10,
+        "Reviewing a lead does not mark first attention completed",
+      );
+      await page
+        .getByRole("button", { name: "Embudo de ventas", exact: true })
+        .click();
       await page
         .getByRole("textbox", { name: "Buscar oportunidades" })
         .fill("busqueda-sin-coincidencias");
