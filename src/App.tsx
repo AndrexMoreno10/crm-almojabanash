@@ -1,3 +1,4 @@
+import { business, whatsappContactUrl } from "../shared/business";
 import {
   Children,
   cloneElement,
@@ -108,6 +109,7 @@ export default function App() {
   const [modal, setModal] = useState<"create" | "settings" | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [clock, setClock] = useState(Date.now());
   async function load() {
     try {
@@ -157,6 +159,21 @@ export default function App() {
   async function saved(message: string) {
     await load();
     setNotice(message);
+  }
+  async function moveLead(lead: Lead, stage: Stage) {
+    if (movingId || lead.stage === stage) return;
+    setMovingId(lead.id);
+    try {
+      await api(`/leads/${lead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ stage }),
+      });
+      await saved(`Oportunidad movida a ${settings.stageLabels[stage]}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setMovingId(null);
+    }
   }
   function exportCsv() {
     const rows = [
@@ -226,7 +243,8 @@ export default function App() {
         <div className="workspace">
           <span className="workspace-icon">A</span>
           <div>
-            Almojábanas<small>Tu equipo de ventas</small>
+            {business.name}
+            <small>{business.city}</small>
           </div>
           <ChevronRight size={15} />
         </div>
@@ -405,7 +423,7 @@ export default function App() {
                   </h2>
                   <p>
                     {view === "pipeline"
-                      ? "Cada tarjeta tiene una historia. Dale un siguiente paso."
+                      ? "Arrastra una tarjeta o cambia su etapa. Cada movimiento queda en el historial."
                       : view === "followups"
                         ? "Ordenados por la fecha del próximo contacto."
                         : "Toda tu información comercial en un solo lugar."}
@@ -478,6 +496,18 @@ export default function App() {
                     return (
                       <section
                         className={`kanban-column stage-${stage}`}
+                        aria-label={settings.stageLabels[stage]}
+                        onDragOver={(e) => {
+                          if (!movingId) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const lead = leads.find(
+                            (l) =>
+                              l.id === e.dataTransfer.getData("text/plain"),
+                          );
+                          if (lead) void moveLead(lead, stage);
+                        }}
                         key={stage}
                       >
                         <div className="column-heading">
@@ -506,6 +536,9 @@ export default function App() {
                               key={lead.id}
                               lead={lead}
                               clock={clock}
+                              labels={settings.stageLabels}
+                              moving={Boolean(movingId)}
+                              onMove={(stage) => void moveLead(lead, stage)}
                               onClick={() => setSelected(lead.id)}
                             />
                           ))}
@@ -783,9 +816,15 @@ function LeadCard({
   lead,
   clock,
   onClick,
+  labels,
+  moving,
+  onMove,
 }: {
   lead: Lead;
   clock: number;
+  labels: Record<Stage, string>;
+  moving: boolean;
+  onMove: (stage: Stage) => void;
   onClick: () => void;
 }) {
   const late =
@@ -793,30 +832,54 @@ function LeadCard({
     lead.nextContactAt &&
     Date.parse(lead.nextContactAt) < clock;
   return (
-    <button className="lead-card" onClick={onClick}>
-      <div className="card-top">
-        <span className="source-tag">{lead.source || "Sin canal"}</span>
-        <ArrowUpRight size={15} />
-      </div>
-      <h4>{lead.name}</h4>
-      <p>{lead.campaign || "Sin campaña asociada"}</p>
-      <strong className="card-value">
-        {currency(lead.value)} <small>valor estimado</small>
-      </strong>
-      {lead.nextContactAt && active(lead) && (
-        <div className={`card-followup ${late ? "late" : ""}`}>
-          <Clock3 size={13} />
-          {late ? "Seguimiento vencido" : dateLabel(lead.nextContactAt)}
+    <article
+      className="lead-card"
+      draggable={!moving}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", lead.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+    >
+      <button className="lead-card-open" onClick={onClick}>
+        <div className="card-top">
+          <span className="source-tag">{lead.source || "Sin canal"}</span>
+          <ArrowUpRight size={15} />
         </div>
-      )}
-      <div className="card-bottom">
-        <span className="small-avatar">
-          {lead.owner ? initials(lead.owner) : "—"}
-        </span>
-        <span>{lead.owner || "Sin responsable"}</span>
-        <ChevronRight size={14} />
-      </div>
-    </button>
+        <h4>{lead.name}</h4>
+        <p>{lead.campaign || "Sin campaña asociada"}</p>
+        <strong className="card-value">
+          {currency(lead.value)} <small>valor estimado</small>
+        </strong>
+        {lead.nextContactAt && active(lead) && (
+          <div className={`card-followup ${late ? "late" : ""}`}>
+            <Clock3 size={13} />
+            {late ? "Seguimiento vencido" : dateLabel(lead.nextContactAt)}
+          </div>
+        )}
+        <div className="card-bottom">
+          <span className="small-avatar">
+            {lead.owner ? initials(lead.owner) : "—"}
+          </span>
+          <span>{lead.owner || "Sin responsable"}</span>
+          <ChevronRight size={14} />
+        </div>
+      </button>
+      <label className="quick-stage">
+        <span>Etapa</span>
+        <select
+          aria-label={`Etapa de ${lead.name}`}
+          value={lead.stage}
+          disabled={moving}
+          onChange={(e) => onMove(e.target.value as Stage)}
+        >
+          {stages.map((stage) => (
+            <option key={stage} value={stage}>
+              {labels[stage]}
+            </option>
+          ))}
+        </select>
+      </label>
+    </article>
   );
 }
 
@@ -1256,6 +1319,28 @@ function Detail({
         <div className="detail-layout">
           <form onSubmit={save}>
             <LeadFields input={draft} setInput={setDraft} labels={labels} />
+            <div className="manual-whatsapp">
+              {whatsappContactUrl(draft.phone) ? (
+                <a
+                  className="secondary whatsapp-action"
+                  href={whatsappContactUrl(draft.phone)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageSquare size={16} /> Abrir conversación en WhatsApp
+                </a>
+              ) : (
+                <p>
+                  Para abrir WhatsApp, guarda el teléfono con indicativo
+                  internacional.
+                </p>
+              )}
+              <p>
+                La respuesta se hace en WhatsApp. Registra aquí las notas y el
+                siguiente paso; los mensajes de la aplicación Business todavía
+                no se sincronizan.
+              </p>
+            </div>
             <div className="form-actions">
               <button className="primary" disabled={busy}>
                 {busy ? "Guardando…" : "Guardar cambios"}

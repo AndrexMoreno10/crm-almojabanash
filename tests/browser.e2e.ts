@@ -69,13 +69,25 @@ test(
       await page
         .getByLabel("Responsable", { exact: true })
         .fill("Equipo de prueba");
-      await page.getByLabel("Teléfono", { exact: true }).fill("555555555");
+      await page
+        .getByLabel("Teléfono", { exact: true })
+        .fill("+57 300 555 5555");
       await page.getByLabel("Canal de origen").fill("WhatsApp");
       await page.getByLabel("Valor estimado").fill("150000");
       await page
         .getByRole("button", { name: "Crear oportunidad", exact: true })
         .click();
       await page.getByRole("dialog").waitFor({ state: "hidden" });
+      await page
+        .getByRole("combobox", {
+          name: "Etapa de Hotel de prueba",
+          exact: true,
+        })
+        .selectOption("conversation");
+      await page
+        .getByRole("region", { name: "En conversación", exact: true })
+        .getByRole("heading", { name: "Hotel de prueba", exact: true })
+        .waitFor();
       const alerts = await page.getByRole("alert").allTextContents();
       assert.deepEqual(alerts, []);
       await page
@@ -89,9 +101,15 @@ test(
         .click();
       await page.getByRole("dialog").waitFor({ timeout: 8000 });
       assert.deepEqual(errors, []);
-      await page
-        .getByLabel("Etapa", { exact: true })
-        .selectOption("conversation");
+      const whatsapp = page.getByRole("link", {
+        name: "Abrir conversación en WhatsApp",
+        exact: true,
+      });
+      assert.equal(
+        await whatsapp.getAttribute("href"),
+        "https://wa.me/573005555555",
+      );
+      await page.getByLabel("Etapa", { exact: true }).selectOption("proposal");
       await page
         .getByRole("button", { name: "Guardar cambios", exact: true })
         .click();
@@ -111,6 +129,31 @@ test(
         })
         .waitFor();
       await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+      const card = page
+        .locator("article.lead-card")
+        .filter({
+          has: page.getByRole("heading", {
+            name: "Hotel de prueba",
+            exact: true,
+          }),
+        });
+      await card.dragTo(
+        page.getByRole("region", { name: "Nuevo contacto", exact: true }),
+      );
+      await page
+        .getByRole("region", { name: "Nuevo contacto", exact: true })
+        .getByRole("heading", { name: "Hotel de prueba", exact: true })
+        .waitFor();
+      await page
+        .getByRole("combobox", {
+          name: "Etapa de Hotel de prueba",
+          exact: true,
+        })
+        .selectOption("conversation");
+      await page
+        .getByRole("region", { name: "En conversación", exact: true })
+        .getByRole("heading", { name: "Hotel de prueba", exact: true })
+        .waitFor();
       await page.reload();
       await page
         .getByRole("button")
@@ -127,6 +170,15 @@ test(
       assert.equal(leads.length, 1);
       assert.equal(leads[0].stage, "conversation");
       assert.equal(leads[0].value, 150000);
+      const history = await (
+        await page.request.get(`http://127.0.0.1:3101/api/leads/${leads[0].id}`)
+      ).json();
+      assert.equal(
+        history.activities.filter((item: { body: string }) =>
+          item.body.startsWith("Etapa:"),
+        ).length,
+        4,
+      );
       await page
         .getByRole("button", { name: "Asistente de ventas", exact: true })
         .click();

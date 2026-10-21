@@ -61,3 +61,11 @@ Un secreto sustituido por un proxy únicamente en solicitudes salientes puede se
 - Un proceso interrumpido durante el envío puede dejar `sending`. También requiere revisión manual. Esta versión no tiene consola de recuperación de envíos.
 - El recordatorio de atención al equipo es interno. No promete que alguien vaya a responder en un plazo.
 - Faltan autenticación, roles, despliegue, manejo completo de medios/estados y validación de Meta para usar el sistema comercialmente.
+
+## Empezar con la aplicación WhatsApp Business
+
+El CRM puede utilizarse sin claves para registrar contactos, actualizar el Kanban, tomar notas y programar seguimientos. El enlace del detalle abre WhatsApp para responder manualmente; los mensajes de la aplicación no se importan ni se automatizan.
+
+WhatsApp Flows no es WhatsApp Cloud API: Flows sirve para experiencias estructuradas dentro del chat y no es requisito del bot de texto. Para recibir y responder automáticamente con la integración oficial sí hace falta Cloud API. Antes de tocar el número comercial, comprobar la elegibilidad y las condiciones vigentes de coexistencia con WhatsApp Business; no asumir que hay que desconectarlo.
+
+Para localizar una app existente, usar **Configuración del negocio → Cuentas → Apps** y [Meta for Developers → Mis apps](https://developers.facebook.com/apps/). El acceso total al portafolio comercial no garantiza un rol en una app. En la app, Configuración → Básica suele contener el secreto; WhatsApp → Configuración de API o Primeros pasos muestra los identificadores y el token de prueba. Los nombres dependen del panel vigente. No guardar claves en archivos `.txt` ni compartir capturas de sus valores.

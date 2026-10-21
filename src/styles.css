@@ -1700,3 +1700,60 @@ textarea {
     width: 100%;
   }
 }
+.lead-card-open {
+  display: block;
+  text-align: left;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.lead-card-open > p {
+  font-size: 9px;
+  color: #9ba490;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.quick-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 1px solid #eef1e8;
+  margin-top: 10px;
+  padding-top: 9px;
+}
+.quick-stage > span {
+  font-size: 9px;
+  color: #73816b;
+}
+.quick-stage select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 3px;
+  font-size: 10px;
+  border: 1px solid #dce4d2;
+  background: #fafcf7;
+  border-radius: 4px;
+  color: #48613c;
+}
+.manual-whatsapp {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f5f8f1;
+}
+.manual-whatsapp p {
+  font-size: 10px;
+  line-height: 1.7;
+  color: #7a8b6d;
+  margin-top: 8px;
+}
+.whatsapp-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.workspace > div {
+  min-width: 0;
+  line-height: 1.5;
+}

@@ -4,7 +4,8 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 
 ## Lo que funciona
 
-- Tablero de oportunidades con cinco etapas cuyos nombres pueden configurarse.
+- Tablero Kanban con cinco etapas configurables, arrastrar tarjetas y selector de etapa. Cada movimiento queda en el historial.
+- Apertura de WhatsApp para atención manual de contactos con indicativo internacional; sin sincronización automática.
 - Registro de contacto, canal, campaña, responsable y valor estimado opcional, sin moneda asumida.
 - Notas e historial, agenda de seguimiento, búsqueda y exportación CSV.
 - Persistencia local con SQLite; las pruebas usan bases temporales separadas.
@@ -12,7 +13,7 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 - Pausa ante preguntas que requieren información comercial o un asesor. `SALIR` detiene el seguimiento automático.
 - Adaptador de WhatsApp Cloud API: verificación de webhook, firma HMAC, deduplicación, contacto y conversación persistentes, respuestas en borrador y cola de envío opcional.
 
-**No está conectado a una cuenta real de Meta.** Instagram, Facebook, comentarios y atribución automática de campañas quedan pendientes. No hay datos de clientes, precios, ubicación, catálogo ni condiciones de muestras inventados. Los contactos de las pruebas son ficticios y no quedan en la base de trabajo.
+**No está conectado a una cuenta real de Meta.** Instagram, Facebook, comentarios y atribución automática de campañas quedan pendientes. La sede, el teléfono y los municipios atendidos están confirmados por el usuario. No hay clientes, precios, catálogo ni condiciones de muestras inventados. Los contactos de las pruebas son ficticios y no quedan en la base de trabajo.
 
 ## Empezar
 
@@ -48,7 +49,7 @@ npm run check
 npm run test:e2e
 ```
 
-`check` compila TypeScript y Vite y ejecuta once pruebas de API, persistencia, bot y adaptador Meta. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, cambio de etapa, notas, recarga, conversación del bot y tamaño móvil. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las imágenes de comprobación se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png` y `/tmp/almo-crm-mobile.png`.
+`check` compila TypeScript y Vite y ejecuta trece pruebas de API, persistencia, bot y adaptador Meta. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, cambio de etapa, notas, recarga, conversación del bot y tamaño móvil. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las imágenes de comprobación se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png` y `/tmp/almo-crm-mobile.png`.
 
 ## Antes de atender clientes reales
 

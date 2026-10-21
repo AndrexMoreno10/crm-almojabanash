@@ -53,7 +53,6 @@ test("explicit opt-out stops the assistant at every stage", () => {
 test("unknown business facts and human requests pause automation", () => {
   for (const message of [
     "¿Cuál es el precio?",
-    "¿Dónde están ubicados?",
     "Tengo una alergia",
     "Quiero hablar con un asesor",
   ]) {
@@ -74,4 +73,52 @@ test("no consent is inferred from silence or unrelated messages", () => {
     advanceBot({ state: "consent", profile: {} }, "hola").state,
     "consent",
   );
+});
+
+test("answers confirmed location and coverage without losing qualification progress", () => {
+  const location = advanceBot(
+    { state: "quantity", profile: { segment: "Hotel" } },
+    "¿Dónde están ubicados?",
+  );
+  assert.equal(location.state, "quantity");
+  assert.equal(location.profile.segment, "Hotel");
+  assert.match(location.reply!, /única sede/);
+  assert.match(location.reply!, /Armenia, Quindío/);
+  assert.match(location.reply!, /Cra\. 14 #11-56/);
+  assert.match(location.reply!, /3152457853/);
+  assert.match(location.reply!, /Cuántas unidades/);
+  const coverage = advanceBot(null, "¿Qué municipios atienden?");
+  for (const city of [
+    "Armenia",
+    "Buenavista",
+    "Calarcá",
+    "Circasia",
+    "Filandia",
+    "Montenegro",
+    "Salento",
+    "La Tebaida",
+  ])
+    assert.ok(coverage.reply!.includes(city));
+  assert.equal(coverage.state, "consent");
+  assert.match(coverage.reply!, /no confirma un envío/);
+  assert.equal(
+    advanceBot(
+      { state: "quantity", profile: {} },
+      "¿Cuánto cuesta el envío a Pereira?",
+    ).state,
+    "human",
+  );
+});
+
+test("known business answers never restart a paused or opted-out assistant", () => {
+  for (const state of ["human", "opted_out"] as const) {
+    assert.equal(
+      advanceBot({ state, profile: {} }, "¿Dónde están ubicados?").reply,
+      null,
+    );
+    assert.equal(
+      advanceBot({ state, profile: {} }, "¿Qué ciudades atienden?").reply,
+      null,
+    );
+  }
 });

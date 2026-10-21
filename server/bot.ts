@@ -1,3 +1,9 @@
+import {
+  business,
+  coverageAnswer,
+  locationAnswer,
+} from "../shared/business.ts";
+
 export type BotState =
   | "consent"
   | "segment"
@@ -46,9 +52,26 @@ const stop =
 const asksHuman =
   /\b(asesor|persona|humano|administrador|hablar con alguien)\b/;
 const needsFacts =
-  /\b(precio|precios|cuesta|cuestan|ubicacion|direccion|ubicados|horario|horarios|domicilio|envio|pago|pagos|catalogo|ingrediente|ingredientes|alergia|alergias)\b/;
-const welcome =
-  "¡Hola! Podemos ayudarte a organizar tu solicitud de compra. ¿Aceptas que el equipo use los datos que compartas para atender esta consulta y hacerle seguimiento? Responde ACEPTO para continuar, ASESOR para hablar con una persona o SALIR para detener el seguimiento.";
+  /\b(precio|precios|cuesta|cuestan|horarios?|domicilios?|envios?|entregas?|pagos?|catalogo|ingredientes?|alergias?|minimos?|gratis|costo|costos)\b/;
+const welcome = `¡Hola! Somos ${business.name}, en ${business.city}. Podemos ayudarte a organizar tu solicitud de compra. ¿Aceptas que el equipo use los datos que compartas para atender esta consulta y hacerle seguimiento? Responde ACEPTO para continuar, ASESOR para hablar con una persona o SALIR para detener el seguimiento.`;
+
+const asksLocation =
+  /\b(ubicacion|direccion|ubicados|ubicadas|sede|sedes)\b|\bdonde (estan|queda|quedan|se encuentran)\b/;
+const asksCoverage =
+  /\bcobertura\b|\b(que|cuales) (ciudades|municipios|zonas)\b|\b(donde|que zonas) atienden\b/;
+const nextQuestion: Record<BotState, string> = {
+  consent: welcome,
+  segment:
+    "¿Compras para un hotel, un evento, para revender o para otro tipo de negocio?",
+  quantity: "¿Cuántas unidades te interesan aproximadamente?",
+  city: "¿En qué ciudad o municipio necesitas el producto?",
+  name: "¿Cuál es tu nombre o el nombre del negocio?",
+  sample:
+    "¿Te interesa solicitar una muestra? Responde SÍ o NO; el equipo confirma sus condiciones.",
+  ready: "Tu solicitud ya está pendiente de atención del equipo.",
+  human: "",
+  opted_out: "",
+};
 
 // Guided, deterministic assistant: never invents product, delivery or commercial terms.
 export function advanceBot(
@@ -79,6 +102,7 @@ export function advanceBot(
       };
     return { state, profile, reply: null };
   }
+  if (state === "human") return { state, profile, reply: null };
   if (asksHuman.test(input) || needsFacts.test(input))
     return {
       state: "human",
@@ -87,7 +111,15 @@ export function advanceBot(
       reply:
         "Para darte información correcta, dejamos tu consulta al equipo. Una persona debe confirmar los detalles; no te puedo prometer disponibilidad ni condiciones. El asistente automático queda en pausa.",
     };
-  if (state === "human") return { state, profile, reply: null };
+  if (asksLocation.test(input) || asksCoverage.test(input)) {
+    const facts = [
+      asksLocation.test(input) ? locationAnswer : "",
+      asksCoverage.test(input) ? coverageAnswer : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return { state, profile, reply: `${facts} ${nextQuestion[state]}` };
+  }
   if (!session) return { state: "consent", profile, reply: welcome };
   switch (state) {
     case "consent":

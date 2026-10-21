@@ -1,3 +1,4 @@
+import { business } from "../shared/business";
 import { useState, type FormEvent } from "react";
 import {
   ArrowRight,
@@ -139,6 +140,21 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
             seguimiento en cualquier momento.
           </p>
         </article>
+        <article className="business-card">
+          <h3>{business.name}</h3>
+          <p>
+            <strong>Única sede · {business.city}</strong>
+            <br />
+            {business.address}, {business.landmark}.
+          </p>
+          <p>Contacto: {business.phone}</p>
+          <p>
+            <strong>Municipios atendidos</strong>
+            <br />
+            {business.serviceAreas.join(", ")}.
+          </p>
+          <p>El equipo confirma las condiciones de cada entrega y muestra.</p>
+        </article>
         <article>
           <h3>Lo que ya sabemos</h3>
           {session && Object.keys(session.profile).length ? (
@@ -196,7 +212,7 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
         <article className="connection-card">
           <h3>Conexión con Meta</h3>
           <div className="connection-row">
-            <span>WhatsApp</span>
+            <span>WhatsApp Business</span>
             <span className="connection-status">
               {status?.sendingEnabled ? (
                 <>
@@ -204,7 +220,7 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
                 </>
               ) : (
                 <>
-                  <Circle size={9} /> Pendiente de conexión
+                  <Circle size={9} /> Atención manual
                 </>
               )}
             </span>
@@ -220,7 +236,7 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
           <p>
             {status?.sendingEnabled
               ? "Los envíos están habilitados. Falta verificar su recepción real con la cuenta y un número de prueba."
-              : "Falta conectar y verificar la cuenta de Meta. No se están enviando mensajes reales desde esta instalación."}
+              : "Puedes atender desde la aplicación Business y actualizar cada lead en el CRM. El bot automático requiere conectar y verificar Cloud API; WhatsApp Flows es una función distinta."}
           </p>
           <span className="connection-next">
             Primero: validar el recorrido de WhatsApp <ArrowRight size={14} />
