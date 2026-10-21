@@ -82,6 +82,11 @@ test("webhook validates challenge, signature and account, deduplicates events, a
   await signed(app, event("1", "Hola")).expect(200);
   let leads = await request(app).get("/api/leads");
   assert.equal(leads.body.length, 1);
+  assert.equal(
+    leads.body[0].source,
+    "WhatsApp",
+    "Incoming webhook records its channel without a manual selection",
+  );
   const id = leads.body[0].id;
   let thread = await request(app).get(`/api/leads/${id}/messages`);
   assert.equal(thread.body.messages.length, 2);

@@ -1,5 +1,5 @@
 import Overview from "./Overview";
-import SourceLabel from "./SourceLabel";
+import SourceLabel, { SourceIcon } from "./SourceLabel";
 import BrandIdentity from "./BrandIdentity";
 import {
   attentionLabels,
@@ -38,6 +38,7 @@ import {
   List,
   LoaderCircle,
   MessageSquare,
+  MapPin,
   Plus,
   Search,
   Settings2,
@@ -317,29 +318,6 @@ export default function App() {
         });
     }
   }
-  async function changeSource(lead: Lead, source: string) {
-    if (movingId || !source) return;
-    setMovingId(lead.id);
-    try {
-      const updated = await api<Lead>(`/leads/${lead.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ source }),
-      });
-      setLeads((before) =>
-        before.map((item) => (item.id === updated.id ? updated : item)),
-      );
-      setNotice("Canal actualizado");
-      requestAnimationFrame(() =>
-        document
-          .querySelector<HTMLButtonElement>(`[data-lead-open="${lead.id}"]`)
-          ?.focus(),
-      );
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setMovingId(null);
-    }
-  }
   const exportable =
     view === "pipeline"
       ? filtered.filter((lead) =>
@@ -446,16 +424,7 @@ export default function App() {
           onHome={() => navigate("overview")}
           onLogoChange={setLogoUrl}
         />
-        <div className="workspace">
-          <span className="workspace-icon">A</span>
-          <div>
-            Sede principal
-            <small>{business.city}</small>
-          </div>
-          <ChevronRight size={15} />
-        </div>
-        <span className="nav-label">TU OPERACIÓN</span>
-        <nav>
+        <nav aria-label="Gestión comercial">
           <NavButton
             icon={<LayoutDashboard size={19} />}
             active={view === "overview"}
@@ -495,22 +464,6 @@ export default function App() {
             Asistente de ventas
           </NavButton>
         </nav>
-        {view !== "overview" && (
-          <div className="sidebar-focus">
-            <span className="sidebar-focus-icon">
-              <CalendarClock size={21} />
-            </span>
-            <strong>{overdue.length} pendientes</strong>
-            <p>
-              {overdue.length
-                ? "Seguimientos con fecha vencida."
-                : "Sin seguimientos vencidos."}
-            </p>
-            <button onClick={() => navigate("followups")}>
-              Abrir agenda <ArrowRight size={16} />
-            </button>
-          </div>
-        )}
         <div className="sidebar-bottom">
           <button
             aria-label="Configurar etapas"
@@ -522,19 +475,10 @@ export default function App() {
           >
             <Settings2 size={18} /> Configurar etapas
           </button>
-          <div className="profile">
-            <span className="avatar">
-              {logoUrl ? (
-                <img className="profile-logo" src={logoUrl} alt="" />
-              ) : (
-                "AH"
-              )}
-            </span>
-            <div>
-              Almojábanas Huilenses<small>Armenia, Quindío</small>
-            </div>
-            <span className="online-dot" />
-          </div>
+          <p className="sidebar-location">
+            <MapPin size={14} aria-hidden="true" />
+            {business.city}
+          </p>
         </div>
       </aside>
       <main
@@ -879,9 +823,6 @@ export default function App() {
                               labels={settings.stageLabels}
                               moving={Boolean(movingId)}
                               onMove={(stage) => void moveLead(lead, stage)}
-                              onSource={(source) =>
-                                void changeSource(lead, source)
-                              }
                               onClick={() => setSelected(lead.id)}
                             />
                           ))}
@@ -932,9 +873,6 @@ export default function App() {
                             labels={settings.stageLabels}
                             moving={Boolean(movingId)}
                             onMove={(stage) => void moveLead(lead, stage)}
-                            onSource={(source) =>
-                              void changeSource(lead, source)
-                            }
                             onClick={() => setSelected(lead.id)}
                           />
                           <p className="lost-reason">
@@ -1168,14 +1106,12 @@ function LeadCard({
   labels,
   moving,
   onMove,
-  onSource,
 }: {
   lead: Lead;
   clock: number;
   labels: Record<Stage, string>;
   moving: boolean;
   onMove: (stage: Stage) => void;
-  onSource: (source: string) => void;
   onClick: () => void;
 }) {
   const late =
@@ -1198,13 +1134,21 @@ function LeadCard({
         aria-label={`Ver detalle de ${lead.name}`}
       >
         <div className="card-identity">
-          <span className="lead-initials" aria-hidden="true">
-            {initials(lead.name)}
+          <span className="lead-avatar">
+            <span className="lead-initials" aria-hidden="true">
+              {initials(lead.name)}
+            </span>
+            <SourceIcon
+              source={lead.source}
+              className="source-logo lead-source-badge"
+            />
           </span>
           <div className="card-summary">
             <h4 title={lead.name}>{lead.name}</h4>
             <div className="card-channel">
-              {lead.source && <SourceLabel source={lead.source} />}
+              {lead.source && (
+                <SourceLabel source={lead.source} showIcon={false} />
+              )}
               {lead.phone && <span title={lead.phone}>{lead.phone}</span>}
             </div>
           </div>
@@ -1231,24 +1175,6 @@ function LeadCard({
           </span>
         )}
       </button>
-      {!lead.source.trim() && (
-        <select
-          className="missing-source"
-          aria-label={`Canal de origen de ${lead.name}`}
-          value=""
-          disabled={moving}
-          onChange={(event) => onSource(event.target.value)}
-        >
-          <option value="" disabled>
-            Asignar canal
-          </option>
-          <option>WhatsApp</option>
-          <option>Instagram</option>
-          <option>Facebook</option>
-          <option>Referido</option>
-          <option>Otro</option>
-        </select>
-      )}
       <div className="card-footer">
         {lead.owner && (
           <span className="card-owner" title={lead.owner}>
@@ -1747,7 +1673,13 @@ function Detail({
       {detail ? (
         <>
           <div className="detail-contact">
-            <span className="detail-avatar">{initials(detail.lead.name)}</span>
+            <span className="detail-avatar">
+              <span aria-hidden="true">{initials(detail.lead.name)}</span>
+              <SourceIcon
+                source={detail.lead.source}
+                className="source-logo lead-source-badge"
+              />
+            </span>
             <div>
               <span className={`stage-pill stage-${detail.lead.stage}`}>
                 {labels[detail.lead.stage]}

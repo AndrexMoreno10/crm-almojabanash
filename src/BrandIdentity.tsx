@@ -92,12 +92,14 @@ export default function BrandIdentity({
   return (
     <div className="brand-identity">
       <div className="brand">
-        <button
-          className="brand-logo-control"
-          aria-label="Cambiar logo del negocio"
-          title="Cargar el logo desde tu computador (PNG, JPG o WebP)"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
+        <a
+          className="brand-home"
+          href="#overview"
+          aria-label="Almojábanas Huilenses: inicio"
+          onClick={(event) => {
+            event.preventDefault();
+            onHome();
+          }}
         >
           {logoUrl ? (
             <img
@@ -117,27 +119,20 @@ export default function BrandIdentity({
               <span />
             </span>
           )}
-          <span className="brand-logo-edit" aria-hidden="true">
-            {busy ? (
-              <LoaderCircle className="spin" size={12} />
-            ) : (
-              <Camera size={12} />
-            )}
-          </span>
-        </button>
-        <a
-          className="brand-copy"
-          href="#overview"
-          aria-label="Almojábanas Huilenses: inicio"
-          onClick={(event) => {
-            event.preventDefault();
-            onHome();
-          }}
-        >
-          <strong>ALMOJÁBANAS</strong>
-          <strong>HUILENSES</strong>
-          <span className="brand-caption">GESTIÓN COMERCIAL</span>
         </a>
+        <button
+          className="brand-logo-edit"
+          aria-label="Cambiar logo del negocio"
+          title="Cambiar logo (PNG, JPG o WebP)"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+        >
+          {busy ? (
+            <LoaderCircle className="spin" size={14} aria-hidden="true" />
+          ) : (
+            <Camera size={14} aria-hidden="true" />
+          )}
+        </button>
         <input
           ref={inputRef}
           className="sr-only"

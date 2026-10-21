@@ -179,6 +179,9 @@ test(
         })
         .click();
       await page.getByRole("dialog").waitFor({ timeout: 8000 });
+      await page
+        .locator('.detail-avatar img[src="/icons/whatsapp.svg"]')
+        .waitFor();
       await audit("ficha de contacto");
       assert.deepEqual(errors, []);
       const whatsapp = page.getByRole("link", {
@@ -450,7 +453,7 @@ test(
           page.request.post("http://127.0.0.1:3101/api/leads", {
             data: {
               name: `Contacto de prueba ${String(index + 1).padStart(2, "0")}`,
-              source: index === 8 ? "" : "WhatsApp",
+              source: index === 7 ? "" : index === 6 ? "Facebook" : "WhatsApp",
               phone: "+57 300 000 0000",
             },
           }),
@@ -471,19 +474,37 @@ test(
         .locator(".lead-card")
         .filter({ hasText: "Contacto de prueba 09" });
       await existingCard
-        .getByRole("combobox", {
-          name: "Canal de origen de Contacto de prueba 09",
-          exact: true,
-        })
-        .selectOption("WhatsApp");
-      await existingCard
-        .locator('img.source-logo[src="/icons/whatsapp.svg"]')
+        .locator('.lead-avatar img[src="/icons/whatsapp.svg"]')
         .waitFor();
       await page.reload();
       await existingCard
-        .locator('img.source-logo[src="/icons/whatsapp.svg"]')
+        .locator('.lead-avatar img[src="/icons/whatsapp.svg"]')
         .waitFor();
-      assert.equal(await existingCard.locator(".missing-source").count(), 0);
+      assert.equal(await existingCard.locator(".card-channel img").count(), 0);
+      assert.equal(
+        await newColumn
+          .getByRole("combobox", { name: /^Canal de origen/ })
+          .count(),
+        0,
+      );
+      const unknownCard = newColumn
+        .locator(".lead-card")
+        .filter({ hasText: "Contacto de prueba 08" });
+      assert.equal(
+        await unknownCard.locator(".lead-avatar img").count(),
+        0,
+        "A phone alone does not imply WhatsApp",
+      );
+      await newColumn
+        .locator(".lead-card")
+        .filter({ hasText: "Contacto de prueba 07" })
+        .locator('.lead-avatar img[src="/icons/facebook.svg"]')
+        .waitFor();
+      await newColumn
+        .locator(".lead-card")
+        .filter({ hasText: longName })
+        .locator('.lead-avatar img[src="/icons/instagram.svg"]')
+        .waitFor({ state: "attached" });
       assert.equal(
         await existingCard
           .locator("img.source-logo")
@@ -762,7 +783,17 @@ test(
       await brandImage.evaluate((image) =>
         (image as HTMLImageElement).decode(),
       );
-      assert.equal(await page.locator(".profile-logo").count(), 1);
+      assert.equal(
+        await page
+          .locator(".brand-copy, .profile, .workspace, .sidebar-focus")
+          .count(),
+        0,
+      );
+      const logoBounds = await brandImage.boundingBox();
+      assert.ok(
+        logoBounds && logoBounds.width === 128 && logoBounds.height === 128,
+        "Sidebar logo is enlarged without stretching its original proportions",
+      );
       assert.match(
         (await page.locator('link[rel="icon"]').getAttribute("href")) || "",
         /^\/api\/branding\/logo\?v=/,

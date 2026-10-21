@@ -11,7 +11,15 @@ const channels = {
   messenger: "facebook",
 } as const;
 
-export default function SourceLabel({ source }: { source: string }) {
+export function SourceIcon({
+  source,
+  className = "source-logo",
+  decorative = false,
+}: {
+  source: string;
+  className?: string;
+  decorative?: boolean;
+}) {
   const normalized = source
     .trim()
     .toLowerCase()
@@ -19,18 +27,29 @@ export default function SourceLabel({ source }: { source: string }) {
   const channel = Object.hasOwn(channels, normalized)
     ? channels[normalized as keyof typeof channels]
     : undefined;
+  return channel ? (
+    <img
+      src={`/icons/${channel}.svg`}
+      width={14}
+      height={14}
+      alt={decorative ? "" : source}
+      aria-hidden={decorative || undefined}
+      title={source}
+      className={className}
+    />
+  ) : null;
+}
+
+export default function SourceLabel({
+  source,
+  showIcon = true,
+}: {
+  source: string;
+  showIcon?: boolean;
+}) {
   return (
     <span className="source-label" title={source}>
-      {channel && (
-        <img
-          src={`/icons/${channel}.svg`}
-          width={14}
-          height={14}
-          alt=""
-          aria-hidden="true"
-          className="source-logo"
-        />
-      )}
+      {showIcon && <SourceIcon source={source} decorative />}
       <span>{source}</span>
     </span>
   );
