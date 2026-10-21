@@ -1,3 +1,5 @@
+import AxeBuilder from "@axe-core/playwright";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -8,7 +10,7 @@ import { chromium } from "playwright-core";
 
 test(
   "browser: create opportunity, save note and stage, reload, use assistant, and render on mobile",
-  { timeout: 180000 },
+  { timeout: 300000 },
   async () => {
     const directory = mkdtempSync(join(tmpdir(), "almo-browser-"));
     const server = spawn(
@@ -48,9 +50,10 @@ test(
         headless: true,
         args: ["--no-sandbox"],
       });
-      const page = await browser.newPage({
+      const context = await browser.newContext({
         viewport: { width: 1440, height: 1000 },
       });
+      const page = await context.newPage();
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("response", (response) => {
@@ -61,13 +64,30 @@ test(
             new URL(response.url()).pathname,
           );
       });
+      const audit = async (name: string) => {
+        const results = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+          .analyze();
+        assert.deepEqual(
+          results.violations.map((item) => ({
+            id: item.id,
+            nodes: item.nodes.map((node) => ({
+              target: node.target,
+              summary: node.failureSummary,
+            })),
+          })),
+          [],
+          `Accesibilidad: ${name}`,
+        );
+      };
       await page.goto("http://127.0.0.1:3101");
       await page
         .getByRole("heading", {
-          name: "Tu operación, de un vistazo.",
+          name: "Panel comercial",
           exact: true,
         })
         .waitFor();
+      await audit("resumen vacío");
       assert.equal(await page.locator(".kanban").count(), 0);
       await page
         .getByRole("button", { name: "Embudo de ventas", exact: true })
@@ -103,7 +123,7 @@ test(
       await page.goBack();
       await page
         .getByRole("heading", {
-          name: "Tu operación, de un vistazo.",
+          name: "Panel comercial",
           exact: true,
         })
         .waitFor();
@@ -131,11 +151,22 @@ test(
           name: "Etapa de Hotel de prueba",
           exact: true,
         })
+        .focus();
+      await page
+        .getByRole("combobox", {
+          name: "Etapa de Hotel de prueba",
+          exact: true,
+        })
         .selectOption("conversation");
       await page
         .getByRole("region", { name: "En atención", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
         .waitFor();
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("aria-label") ===
+          "Etapa de Hotel de prueba",
+      );
       const alerts = await page.getByRole("alert").allTextContents();
       assert.deepEqual(alerts, []);
       await page
@@ -148,6 +179,7 @@ test(
         })
         .click();
       await page.getByRole("dialog").waitFor({ timeout: 8000 });
+      await audit("ficha de contacto");
       assert.deepEqual(errors, []);
       const whatsapp = page.getByRole("link", {
         name: "Abrir conversación en WhatsApp",
@@ -165,6 +197,7 @@ test(
         .getByRole("status")
         .filter({ hasText: "Cambios guardados" })
         .waitFor();
+      await page.getByRole("tab", { name: "Actividad", exact: true }).click();
       await page
         .getByRole("textbox", { name: "Nueva nota" })
         .fill("Quiere evaluar una muestra. Pendiente de confirmar.");
@@ -317,6 +350,7 @@ test(
           .innerText(),
         "100%",
       );
+      await audit("resumen con oportunidades");
       await page.screenshot({
         path: "/tmp/almo-crm-overview.png",
         fullPage: true,
@@ -335,6 +369,7 @@ test(
       await page
         .getByRole("button", { name: "Asistente de ventas", exact: true })
         .click();
+      await audit("asistente");
       for (const message of [
         "Hola",
         "ACEPTO",
@@ -370,11 +405,86 @@ test(
       await page
         .getByRole("button", { name: "Embudo de ventas", exact: true })
         .click();
+      const longName =
+        "Hotel de eventos y convenciones del Eje Cafetero con un nombre comercial largo para comprobar la ficha y las columnas";
+      await page.request.post("http://127.0.0.1:3101/api/leads", {
+        data: {
+          name: longName,
+          owner: "Equipo comercial de ventas al por mayor",
+          source: "Instagram",
+        },
+      });
+      await page.request.post("http://127.0.0.1:3101/api/leads", {
+        data: {
+          name: "Contacto descartado",
+          stage: "lost",
+          lostReason: "No requiere producto por ahora",
+        },
+      });
+      await page
+        .getByRole("button", { name: "Actualizar", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: longName, exact: true })
+        .waitFor();
+      await page
+        .getByRole("textbox", { name: "Buscar oportunidades" })
+        .fill("busqueda-sin-coincidencias");
+      await page
+        .getByText("No hay oportunidades con esos filtros.", { exact: false })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Limpiar filtros", exact: true })
+        .click();
+      await page
+        .getByRole("button", {
+          name: "Ver oportunidades perdidas",
+          exact: true,
+        })
+        .click();
+      await page
+        .getByRole("heading", { name: "Contacto descartado", exact: true })
+        .waitFor();
+      const downloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: "Exportar", exact: true }).click();
+      const download = await downloadPromise;
+      const csv = await readFile((await download.path())!, "utf8");
+      assert.match(csv, /Contacto descartado/);
+      assert.doesNotMatch(csv, /Hotel de prueba/);
+      await page
+        .getByRole("button", { name: "Ver embudo de ocho etapas", exact: true })
+        .click();
+      await audit("kanban");
+      await page
+        .getByRole("button", { name: "Ver etapas siguientes", exact: true })
+        .click();
+      await page.waitForFunction(
+        () => document.querySelector(".kanban")!.scrollLeft > 100,
+      );
+      await page
+        .getByRole("button", { name: "Ver etapas anteriores", exact: true })
+        .click();
+      await page.waitForFunction(
+        () => document.querySelector(".kanban")!.scrollLeft === 0,
+      );
+      await page.setViewportSize({ width: 1280, height: 900 });
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth,
+        ),
+        false,
+      );
+      await page.setViewportSize({ width: 1440, height: 1000 });
       await page.screenshot({
         path: "/tmp/almo-crm-desktop.png",
         fullPage: true,
       });
       await page.setViewportSize({ width: 390, height: 844 });
+      await page.waitForFunction(
+        () =>
+          document.querySelector(".sidebar")!.getBoundingClientRect().right <=
+          0,
+      );
       await page.screenshot({
         path: "/tmp/almo-crm-mobile.png",
         fullPage: true,
@@ -387,6 +497,75 @@ test(
         false,
         "Page should fit a mobile viewport; the board itself may scroll",
       );
+      await page
+        .getByRole("button", { name: "Abrir menú", exact: true })
+        .click();
+      await page.getByRole("button", { name: "Resumen", exact: true }).click();
+      await page
+        .getByRole("heading", { name: "Panel comercial", exact: true })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Abrir menú", exact: true })
+        .click();
+      await audit("navegación móvil");
+      await page
+        .getByRole("button", { name: "Configurar etapas", exact: true })
+        .click();
+      await page.getByRole("dialog").getByRole("heading").waitFor();
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("aria-label") === "Abrir menú",
+      );
+      await audit("móvil");
+      await page.screenshot({
+        path: "/tmp/almo-crm-overview-mobile.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page
+        .getByRole("button", { name: "Nueva oportunidad", exact: true })
+        .click();
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() =>
+        document.activeElement?.textContent?.includes("Nueva oportunidad"),
+      );
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Nueva oportunidad", exact: true })
+          .evaluate((el) => el === document.activeElement),
+        true,
+      );
+      await page.route("**/api/leads", (route) =>
+        route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: "No se pudieron consultar los contactos",
+          }),
+        }),
+      );
+      await page
+        .getByRole("button", { name: "Actualizar", exact: true })
+        .click();
+      await page
+        .getByRole("heading", {
+          name: "No se pudo cargar la operación",
+          exact: true,
+        })
+        .waitFor();
+      assert.ok(
+        (await page.locator("article.metric > strong").allTextContents()).every(
+          (value) => value === "—",
+        ),
+      );
+      await page.unroute("**/api/leads");
+      await page
+        .getByRole("button", { name: "Actualizar", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: "Distribución del embudo", exact: true })
+        .waitFor();
       assert.deepEqual(errors, []);
     } finally {
       await browser?.close();

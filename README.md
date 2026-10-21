@@ -5,6 +5,7 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 ## Lo que funciona
 
 - Secciones independientes de **Resumen** y **Embudo de ventas** en el sidebar. El resumen reúne indicadores, seguimientos y oportunidades recientes; el embudo conserva el Kanban.
+- Interfaz en azul, naranja y blanco, tipografía Manrope alojada en el proyecto, navegación móvil con etiquetas y fichas divididas en información, actividad y conversación.
 - Tablero Kanban con ocho etapas comerciales configurables: nuevo lead, atención, información enviada, interés confirmado, muestra, cierre del pedido, primera compra y recurrencia. Cada movimiento queda en el historial. Las oportunidades perdidas se consultan aparte y se pueden recuperar.
 - Apertura de WhatsApp para atención manual de contactos con indicativo internacional; sin sincronización automática.
 - Registro de contacto, canal, campaña, responsable y valor estimado opcional, sin moneda asumida.
@@ -28,11 +29,11 @@ Set-Location .\crm-almojabanash
 .\iniciar-windows.cmd
 ```
 
-El iniciador instala las dependencias con el lockfile, compila y abre el navegador en Windows. También puedes abrir `iniciar-windows.cmd` con doble clic dentro de la carpeta del proyecto. Mantén su ventana abierta; Ctrl+C detiene el servidor. No sobrescribe una base de datos existente.
+El iniciador prepara las dependencias cuando sea necesario y abre el navegador en Windows, **sin compilar cada vez**. También puedes abrir `iniciar-windows.cmd` con doble clic dentro de la carpeta del proyecto. Mantén su ventana abierta; Ctrl+C detiene los servicios.
 
-El modo de revisión usa un puerto local libre, funciona sin claves y desactiva Meta aunque haya variables configuradas. No importa ni envía mensajes reales. Los leads introducidos se guardan en `data/crm.sqlite`. Para volver a abrirlo, ejecuta el iniciador otra vez.
+Vite actualiza la interfaz al guardar y `tsx watch` reinicia la API cuando cambia su código. Además, el iniciador consulta GitHub cada 20 segundos: aplica únicamente avances directos de `main` cuando la copia está limpia. Se pausa ante cambios locales, otra rama, historiales divergentes o archivos que Git no puede conservar; nunca hace reset ni borra la base. Si cambian las dependencias, las prepara y reinicia sus servicios. Un cambio en el propio iniciador requiere volver a abrirlo.
 
-En otro sistema, después de instalar y compilar, ejecuta `npm run review -- --no-open`. Abre la dirección que muestra en la terminal de tu propio equipo. El servidor de revisión y el recorrido de navegador se comprobaron en Linux; la ejecución del archivo `.cmd` y la apertura del navegador en Windows requieren comprobarse en el computador del usuario.
+El desarrollo desactiva los envíos de Meta aunque haya variables configuradas. Los contactos se conservan en `data/crm.sqlite`. Este flujo se verificó en Linux; el archivo `.cmd` y la apertura del navegador en Windows requieren comprobarse en el computador del usuario.
 
 ## Empezar
 
@@ -40,11 +41,12 @@ Requiere **Node.js 24** y npm. SQLite viene incluido en Node; no requiere un ser
 
 ```bash
 cd /workspace/crm-almojabanash
-npm ci --cache /workspace/.cache/npm --no-fund --no-audit
 npm run dev
 ```
 
-`npm run dev` inicia la interfaz en el puerto 5173 y la API en el 3001, ambos en loopback. El proxy de desarrollo usa el puerto 3001; no cambies `PORT` en este modo. Para comprobar el servidor internamente:
+`npm run dev` prepara dependencias e inicia la interfaz en el puerto 5173 y la API en el 3001, ambos en loopback, con actualización al guardar. Usa `npm run dev:sync` si también quieres recibir los cambios publicados en GitHub. El acceso a GitHub usa la configuración de Git del equipo; no guardes tokens en estos scripts. Si falla la conexión, el CRM conserva su copia local. No cambies `PORT` en este modo. Si los puertos están ocupados, cierra la sesión anterior; el iniciador no detiene procesos ajenos.
+
+Para comprobar el servidor internamente:
 
 ```bash
 curl --fail http://127.0.0.1:3001/api/health
@@ -68,7 +70,7 @@ npm run check
 npm run test:e2e
 ```
 
-`check` compila TypeScript y Vite y ejecuta quince pruebas de API, persistencia, bot y adaptador Meta. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, las ocho etapas, pérdida y recuperación, métricas de primera compra y recurrencia, notas, recarga, conversación del bot y tamaño móvil. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las imágenes de comprobación se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png` y `/tmp/almo-crm-mobile.png`.
+`check` compila TypeScript y Vite y ejecuta veinte pruebas de API, persistencia, bot, Meta y sincronización Git, incluyendo la conservación de archivos ignorados. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, ocho etapas, pérdida y recuperación, indicadores, notas, filtros, exportación, recarga, conversación del bot y tamaño móvil. También ejecuta axe sobre las vistas principales para detectar problemas WCAG A/AA. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las capturas se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png`, `/tmp/almo-crm-mobile.png`, `/tmp/almo-crm-overview.png` y `/tmp/almo-crm-overview-mobile.png`.
 
 ## Antes de atender clientes reales
 
@@ -78,15 +80,18 @@ El asistente es un flujo determinista, no un modelo generativo. Permite probar l
 
 Consulta [las decisiones y los pendientes del negocio](docs/PRODUCTO.md).
 
+La [auditoría del frontend](docs/FRONTEND-AUDIT.md) detalla los cambios visuales y de accesibilidad. GitHub Actions ejecuta compilación y pruebas en los pushes a main y pull requests. El despliegue queda pendiente de definir el proveedor y destino.
+
 ## Actualizar una copia existente
 
 Detén el servidor con Ctrl+C y ejecuta desde la carpeta del CRM:
 
 ```powershell
 git pull --ff-only
-npm.cmd run build
-npm.cmd run review
+npm.cmd run dev:sync
 ```
+
+Estos comandos se necesitan una vez para recibir el nuevo iniciador. Después puedes dejar `dev:sync` abierto mientras revisas los cambios publicados. Para trabajar sobre código local, `npm run dev` ofrece el mismo refresco sin consultar GitHub. `build` queda para validación y despliegue; `review` sigue disponible para revisar la versión compilada y requiere un build previo.
 
 La ampliación del embudo se aplica al arrancar. Conserva los identificadores de las etapas anteriores, los leads, las notas, los seguimientos y las etiquetas personalizadas. Añade las etapas nuevas y actualiza únicamente los nombres predeterminados antiguos. La actualización se registra una sola vez; no borres `data/crm.sqlite` para actualizar.
 

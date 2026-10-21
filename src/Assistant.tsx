@@ -1,5 +1,5 @@
 import { business } from "../shared/business";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   Bot,
@@ -24,14 +24,19 @@ const initial = [
   },
 ];
 export default function Assistant({ status }: { status: MetaStatus | null }) {
+  const messagesRef = useRef<HTMLDivElement>(null);
   const [chat, setChat] = useState(initial);
   const [session, setSession] = useState<BotSession | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    const element = messagesRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [chat]);
   async function send(e: FormEvent) {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (busy || !message.trim()) return;
     setBusy(true);
     setError("");
     try {
@@ -72,12 +77,13 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
         <div className="section-heading">
           <div>
             <h2>
-              <Bot size={20} /> Asistente de oportunidades
+              <Bot size={20} /> Prueba de conversación
             </h2>
             <p>Simulación: no envía mensajes ni crea contactos.</p>
           </div>
           <button
             className="text-button"
+            disabled={busy}
             onClick={() => {
               setChat(initial);
               setSession(null);
@@ -87,14 +93,20 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
             <RotateCcw size={15} /> Reiniciar
           </button>
         </div>
-        <div className="chat-messages" aria-live="polite">
+        <div
+          className="chat-messages"
+          ref={messagesRef}
+          role="log"
+          aria-label="Conversación de prueba"
+          aria-live="polite"
+        >
           {chat.map((item, i) => (
             <div className={`chat-message chat-${item.role}`} key={i}>
               <small>
                 {item.role === "user"
                   ? "Tú, como cliente"
                   : item.role === "bot"
-                    ? "Asistente Almo"
+                    ? "Almojábanas Huilenses"
                     : "Estado de atención"}
               </small>
               <p>{item.text}</p>
@@ -109,6 +121,7 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
         <form className="chat-input" onSubmit={send}>
           <input
             aria-label="Mensaje de prueba"
+            disabled={busy}
             maxLength={4000}
             required
             placeholder="Escribe como lo haría un cliente…"
@@ -126,8 +139,8 @@ export default function Assistant({ status }: { status: MetaStatus | null }) {
       </div>
       <aside className="assistant-info">
         <article>
-          <div className="eyebrow">UN RECORRIDO CON INTENCIÓN</div>
-          <h3>Del interés al siguiente paso.</h3>
+          <div className="eyebrow">RECORRIDO COMERCIAL</div>
+          <h3>Datos que recoge el asistente</h3>
           <ol>
             <li>Permiso para el seguimiento</li>
             <li>Tipo de negocio y cantidad</li>

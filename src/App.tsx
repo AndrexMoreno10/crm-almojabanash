@@ -6,6 +6,7 @@ import {
   isValidElement,
   useEffect,
   useId,
+  useRef,
   useState,
   type FormEvent,
   type ReactElement,
@@ -13,6 +14,9 @@ import {
 } from "react";
 import {
   Bot,
+  Menu,
+  RefreshCw,
+  ChevronLeft,
   ArrowDownToLine,
   ArrowRight,
   ArrowUpRight,
@@ -135,8 +139,16 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [mobile, setMobile] = useState(
+    () => window.matchMedia("(max-width: 900px)").matches,
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [clock, setClock] = useState(Date.now());
   function navigate(next: View) {
+    setMenuOpen(false);
     if (next === "pipeline") setShowLost(false);
     setView(next);
     window.location.hash = next;
@@ -146,6 +158,50 @@ export default function App() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 900px)");
+    const update = () => {
+      setMobile(query.matches);
+      if (!query.matches) setMenuOpen(false);
+    };
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const priorOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const nav = document.querySelector<HTMLElement>(".sidebar");
+    nav?.querySelector<HTMLButtonElement>(".mobile-nav-close")?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Tab") {
+        const focusable = Array.from(
+          nav?.querySelectorAll<HTMLElement>("button,a[href]") || [],
+        ).filter((el) => el.getClientRects().length > 0);
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    const onResize = () => {
+      if (window.innerWidth > 900) setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.body.style.overflow = priorOverflow;
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+      menuButtonRef.current?.focus();
+    };
+  }, [menuOpen]);
   async function load() {
     try {
       const [data, config, meta] = await Promise.all([
@@ -201,6 +257,8 @@ export default function App() {
   }
   async function moveLead(lead: Lead, stage: Stage) {
     if (movingId || lead.stage === stage) return;
+    const restoreFocus =
+      document.activeElement?.getAttribute("data-stage-lead") === lead.id;
     setMovingId(lead.id);
     try {
       await api(`/leads/${lead.id}`, {
@@ -212,6 +270,31 @@ export default function App() {
       setError((e as Error).message);
     } finally {
       setMovingId(null);
+      if (restoreFocus)
+        requestAnimationFrame(() => {
+          const target = document.querySelector<HTMLSelectElement>(
+            `select[data-stage-lead="${lead.id}"]`,
+          );
+          if (target) target.focus();
+          else
+            document.querySelector<HTMLButtonElement>(".lost-toggle")?.focus();
+        });
+    }
+  }
+  const exportable =
+    view === "pipeline"
+      ? filtered.filter((lead) =>
+          showLost ? lead.stage === "lost" : lead.stage !== "lost",
+        )
+      : view === "followups"
+        ? scheduled
+        : filtered;
+  async function refreshAll() {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
     }
   }
   function exportCsv() {
@@ -227,7 +310,7 @@ export default function App() {
         "Valor estimado",
         "Próximo seguimiento",
       ],
-      ...filtered.map((l) => [
+      ...exportable.map((l) => [
         l.name,
         l.phone,
         l.email,
@@ -261,11 +344,46 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell ${menuOpen ? "nav-open" : ""}`}>
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById("main-content")?.focus();
+        }}
+      >
+        Saltar al contenido
+      </a>
+      {menuOpen && (
+        <button
+          className="nav-backdrop"
+          aria-label="Cerrar menú de navegación"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+      <aside
+        className="sidebar"
+        role={menuOpen ? "dialog" : undefined}
+        aria-modal={menuOpen || undefined}
+        aria-label="Navegación principal"
+        inert={
+          (mobile && !menuOpen) ||
+          Boolean(modal) ||
+          Boolean(selected) ||
+          undefined
+        }
+      >
+        <button
+          className="mobile-nav-close icon-button"
+          aria-label="Cerrar menú"
+          onClick={() => setMenuOpen(false)}
+        >
+          <X size={20} />
+        </button>
         <a
           className="brand"
-          aria-label="Almo: inicio"
+          aria-label="Almojábanas Huilenses: inicio"
           href="#"
           onClick={(e) => {
             e.preventDefault();
@@ -273,16 +391,19 @@ export default function App() {
           }}
         >
           <span className="brand-symbol">
-            a<span>•</span>
+            AH
+            <span />
           </span>
           <div>
-            almo<span className="brand-caption">ESPACIO COMERCIAL</span>
+            <strong>ALMOJÁBANAS</strong>
+            <strong>HUILENSES</strong>
+            <span className="brand-caption">GESTIÓN COMERCIAL</span>
           </div>
         </a>
         <div className="workspace">
           <span className="workspace-icon">A</span>
           <div>
-            {business.name}
+            Sede principal
             <small>{business.city}</small>
           </div>
           <ChevronRight size={15} />
@@ -328,63 +449,96 @@ export default function App() {
             Asistente de ventas
           </NavButton>
         </nav>
-        <div className="sidebar-tip">
-          <Sparkles size={21} />
-          <strong>Cada conversación cuenta.</strong>
+        <div className="sidebar-focus">
+          <span className="sidebar-focus-icon">
+            <CalendarClock size={21} />
+          </span>
+          <strong>{overdue.length} pendientes</strong>
           <p>
-            Un próximo paso claro te ayuda a mantener viva cada oportunidad.
+            {overdue.length
+              ? "Seguimientos con fecha vencida."
+              : "Sin seguimientos vencidos."}
           </p>
           <button onClick={() => navigate("followups")}>
-            Ver seguimientos <ArrowRight size={15} />
+            Abrir agenda <ArrowRight size={16} />
           </button>
         </div>
         <div className="sidebar-bottom">
           <button
             aria-label="Configurar etapas"
             title="Configurar etapas"
-            onClick={() => setModal("settings")}
+            onClick={() => {
+              setMenuOpen(false);
+              setModal("settings");
+            }}
           >
             <Settings2 size={18} /> Configurar etapas
           </button>
           <div className="profile">
-            <span className="avatar">EQ</span>
+            <span className="avatar">AH</span>
             <div>
-              Equipo comercial<small>Espacio de desarrollo</small>
+              Almojábanas Huilenses<small>Armenia, Quindío</small>
             </div>
             <span className="online-dot" />
           </div>
         </div>
       </aside>
-      <main>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        inert={menuOpen || Boolean(modal) || Boolean(selected) || undefined}
+      >
         <header className="topbar">
-          <div>
-            Espacio de trabajo <ChevronRight size={13} />{" "}
+          <button
+            ref={menuButtonRef}
+            className="menu-trigger icon-button"
+            aria-label="Abrir menú"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(true)}
+          >
+            <Menu size={22} />
+          </button>
+          <div className="breadcrumb">
+            Comercial <ChevronRight size={14} />{" "}
             <strong>{viewLabels[view]}</strong>
           </div>
-          <span className="manual-indicator">
-            <span /> Registro manual
-          </span>
+          <div className="topbar-actions">
+            <span className="manual-indicator">
+              <span /> Modo manual
+            </span>
+            <button
+              className="text-button refresh-button"
+              aria-label="Actualizar"
+              disabled={refreshing}
+              onClick={() => void refreshAll()}
+            >
+              <RefreshCw size={16} className={refreshing ? "spin" : ""} />
+              <span>Actualizar</span>
+            </button>
+          </div>
         </header>
         <div className="page-content">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">MENOS OPORTUNIDADES OLVIDADAS</div>
+              <div className="eyebrow">
+                ALMOJÁBANAS HUILENSES <span>/ COMERCIAL</span>
+              </div>
               <h1>
                 {view === "overview"
-                  ? "Tu operación, de un vistazo."
+                  ? "Panel comercial"
                   : view === "pipeline"
                     ? "Embudo de ventas"
                     : view === "followups"
-                      ? "El siguiente paso importa."
+                      ? "Agenda de seguimiento"
                       : view === "assistant"
-                        ? "Atención con un siguiente paso."
-                        : "Personas, antes que números."}
+                        ? "Asistente comercial"
+                        : "Contactos"}
               </h1>
               <p>
                 {view === "overview"
-                  ? "Revisa tus indicadores y decide a qué conversaciones dar prioridad."
+                  ? "Oportunidades, próximos contactos y resultados de tu equipo."
                   : view === "pipeline"
-                    ? "Organiza tus contactos y acompaña cada oportunidad hasta el cierre."
+                    ? "Gestiona cada oportunidad desde el primer mensaje hasta la compra recurrente."
                     : view === "followups"
                       ? "Retoma las conversaciones pendientes y mantén el ritmo de tu equipo."
                       : view === "assistant"
@@ -411,23 +565,33 @@ export default function App() {
           {view === "overview" && (
             <section className="metrics" aria-label="Resumen comercial">
               <Metric
+                status={
+                  loading
+                    ? "Cargando datos…"
+                    : error
+                      ? "No disponible"
+                      : undefined
+                }
                 label="Oportunidades abiertas"
-                value={String(open.length)}
+                value={loading || error ? "—" : String(open.length)}
                 icon={<Users size={19} />}
-                foot="Contactos por acompañar"
+                foot="Leads activos antes de la primera compra"
               />
               <Metric
-                label="Valor en oportunidades"
-                value={currency(open.reduce((sum, l) => sum + l.value, 0))}
-                icon={<TrendingUp size={19} />}
-                foot="Suma de valores estimados"
-              />
-              <Metric
+                status={
+                  loading
+                    ? "Cargando datos…"
+                    : error
+                      ? "No disponible"
+                      : undefined
+                }
                 label="Tasa de cierre"
                 value={
-                  closed.length
-                    ? `${Math.round((won.length / closed.length) * 100)}%`
-                    : "—"
+                  loading || error
+                    ? "—"
+                    : closed.length
+                      ? `${Math.round((won.length / closed.length) * 100)}%`
+                      : "—"
                 }
                 icon={<Target size={19} />}
                 foot={
@@ -437,29 +601,40 @@ export default function App() {
                 }
               />
               <Metric
+                status={
+                  loading
+                    ? "Cargando datos…"
+                    : error
+                      ? "No disponible"
+                      : undefined
+                }
                 label="Primera compra"
-                value={String(leads.filter((l) => l.stage === "won").length)}
+                value={
+                  loading || error
+                    ? "—"
+                    : String(leads.filter((l) => l.stage === "won").length)
+                }
                 icon={<Check size={19} />}
                 foot="Clientes en la etapa de primera compra"
               />
               <Metric
+                status={
+                  loading
+                    ? "Cargando datos…"
+                    : error
+                      ? "No disponible"
+                      : undefined
+                }
                 label="Clientes recurrentes"
-                value={String(
-                  leads.filter((l) => l.stage === "recurring").length,
-                )}
+                value={
+                  loading || error
+                    ? "—"
+                    : String(
+                        leads.filter((l) => l.stage === "recurring").length,
+                      )
+                }
                 icon={<Users size={19} />}
                 foot="Clasificados como compradores recurrentes"
-              />
-              <Metric
-                label="Seguimientos vencidos"
-                value={String(overdue.length)}
-                icon={<Clock3 size={19} />}
-                foot={
-                  overdue.length
-                    ? "Es momento de retomar el contacto"
-                    : "Sin seguimientos vencidos"
-                }
-                accent={overdue.length > 0}
               />
             </section>
           )}
@@ -467,6 +642,7 @@ export default function App() {
             <Overview
               leads={leads}
               labels={settings.stageLabels}
+              unavailable={Boolean(error)}
               loading={loading}
               now={clock}
               onOpen={setSelected}
@@ -510,7 +686,7 @@ export default function App() {
                 <button
                   className="text-button"
                   onClick={exportCsv}
-                  disabled={!filtered.length}
+                  disabled={!exportable.length}
                 >
                   <ArrowDownToLine size={16} /> Exportar
                 </button>
@@ -561,6 +737,45 @@ export default function App() {
                       : `Perdidas (${lost.length})`}
                   </button>
                 )}
+                {view === "pipeline" && !showLost && (
+                  <div
+                    className="board-scroll-controls"
+                    aria-label="Desplazamiento del embudo"
+                  >
+                    <button
+                      className="icon-button"
+                      aria-label="Ver etapas anteriores"
+                      onClick={() =>
+                        boardRef.current?.scrollBy({
+                          left: -560,
+                          behavior: window.matchMedia(
+                            "(prefers-reduced-motion: reduce)",
+                          ).matches
+                            ? "auto"
+                            : "smooth",
+                        })
+                      }
+                    >
+                      <ChevronLeft size={19} />
+                    </button>
+                    <button
+                      className="icon-button"
+                      aria-label="Ver etapas siguientes"
+                      onClick={() =>
+                        boardRef.current?.scrollBy({
+                          left: 560,
+                          behavior: window.matchMedia(
+                            "(prefers-reduced-motion: reduce)",
+                          ).matches
+                            ? "auto"
+                            : "smooth",
+                        })
+                      }
+                    >
+                      <ChevronRight size={19} />
+                    </button>
+                  </div>
+                )}
                 <div className="view-toggle">
                   <button
                     className={view === "pipeline" ? "chosen" : ""}
@@ -584,8 +799,14 @@ export default function App() {
                   <p>Cargando tu espacio…</p>
                 </div>
               ) : view === "pipeline" && !showLost ? (
-                <div className="kanban">
-                  {pipelineStages.map((stage) => {
+                <div
+                  className="kanban"
+                  ref={boardRef}
+                  role="region"
+                  tabIndex={0}
+                  aria-label="Embudo con ocho etapas"
+                >
+                  {pipelineStages.map((stage, index) => {
                     const items = filtered.filter((l) => l.stage === stage);
                     return (
                       <section
@@ -606,7 +827,9 @@ export default function App() {
                       >
                         <div className="column-heading">
                           <div>
-                            <span className="stage-dot" />
+                            <span className="stage-index">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
                             <h3 title={stageHints[stage]}>
                               {settings.stageLabels[stage]}
                             </h3>
@@ -640,19 +863,14 @@ export default function App() {
                           ))}
                           {items.length === 0 && (
                             <div className="column-empty">
-                              <span className="empty-lines">
-                                <span />
-                                <span />
-                                <span />
-                              </span>
                               <p>
                                 {stage === "new"
-                                  ? "Aquí empieza una nueva conversación"
+                                  ? "Sin contactos nuevos"
                                   : stage === "won"
-                                    ? "Aquí celebraremos la primera compra"
+                                    ? "Sin primeras compras"
                                     : stage === "recurring"
-                                      ? "Aquí acompañaremos las compras repetidas"
-                                      : "Espacio para el siguiente paso"}
+                                      ? "Sin clientes recurrentes"
+                                      : "Sin oportunidades en esta etapa"}
                               </p>
                             </div>
                           )}
@@ -660,6 +878,20 @@ export default function App() {
                       </section>
                     );
                   })}
+                  {!filtered.length && leads.length > 0 && (
+                    <div className="board-no-results" role="status">
+                      No hay oportunidades con esos filtros.
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          setSearch("");
+                          setSource("");
+                        }}
+                      >
+                        Limpiar filtros
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : view === "pipeline" ? (
                 <section
@@ -783,8 +1015,8 @@ export default function App() {
                   ) : (
                     <Empty
                       icon={<Users size={26} />}
-                      title="Tu próxima venta empieza con un contacto"
-                      text="Registra tu primera oportunidad para empezar a construir su historia."
+                      title="Todavía no hay contactos"
+                      text="Registra un contacto para gestionar su información y programar el próximo paso."
                     />
                   )}
                 </div>
@@ -798,10 +1030,10 @@ export default function App() {
                       <MessageSquare size={23} />
                     </span>
                     <div>
-                      <strong>Todo empieza con una conversación.</strong>
+                      <strong>Registra tu primera oportunidad</strong>
                       <p>
-                        Agrega tu primera oportunidad y define cuándo volver a
-                        contactar.
+                        Añade el contacto, asigna un responsable y programa el
+                        seguimiento.
                       </p>
                     </div>
                     <button
@@ -818,10 +1050,10 @@ export default function App() {
           )}
           <footer className="page-footer">
             <span>
-              <CircleHelp size={15} /> Las etapas son configurables. Los canales
-              de mensajería aún no están conectados.
+              <CircleHelp size={15} /> Gestión manual · Meta pendiente de
+              conexión
             </span>
-            <span>Almo · Un paso más cerca.</span>
+            <span>Almojábanas Huilenses · CRM</span>
           </footer>
         </div>
       </main>
@@ -910,7 +1142,9 @@ function Metric({
   icon,
   foot,
   accent,
+  status,
 }: {
+  status?: string;
   label: string;
   value: string;
   icon: ReactNode;
@@ -924,7 +1158,7 @@ function Metric({
         <span>{icon}</span>
       </div>
       <strong>{value}</strong>
-      <small>{foot}</small>
+      <small>{status || foot}</small>
     </article>
   );
 }
@@ -975,6 +1209,7 @@ function LeadCard({
     >
       <button className="lead-card-open" onClick={onClick}>
         <div className="card-top">
+          <span className="lead-initials">{initials(lead.name)}</span>
           <span className="source-tag">{lead.source || "Sin canal"}</span>
           <ArrowUpRight size={15} />
         </div>
@@ -1001,6 +1236,7 @@ function LeadCard({
         <span>Etapa</span>
         <select
           aria-label={`Etapa de ${lead.name}`}
+          data-stage-lead={lead.id}
           value={lead.stage}
           disabled={moving}
           onChange={(e) => onMove(e.target.value as Stage)}
@@ -1037,9 +1273,11 @@ function Modal({
     const focusables = () =>
       Array.from(
         dialog?.querySelectorAll<HTMLElement>(
-          'button, input, select, textarea, [tabindex="0"]',
+          'a[href], button, input, select, textarea, [tabindex="0"]',
         ) || [],
-      ).filter((el) => !el.hasAttribute("disabled"));
+      ).filter(
+        (el) => !el.hasAttribute("disabled") && el.getClientRects().length > 0,
+      );
     focusables()[0]?.focus();
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -1060,7 +1298,16 @@ function Modal({
     return () => {
       document.body.style.overflow = priorOverflow;
       document.removeEventListener("keydown", handler);
-      previous?.focus();
+      // React may still be clearing the background's inert state during cleanup.
+      requestAnimationFrame(() => {
+        if (previous?.isConnected && !previous.closest("[inert]")) {
+          previous.focus();
+        } else {
+          document
+            .querySelector<HTMLButtonElement>('[aria-label="Abrir menú"]')
+            ?.focus();
+        }
+      });
     };
   }, []);
   return (
@@ -1382,6 +1629,7 @@ function Detail({
   } | null>(null);
   const [detail, setDetail] = useState<LeadDetail | null>(null);
   const [draft, setDraft] = useState<LeadInput>(blankLead);
+  const [tab, setTab] = useState<"info" | "activity" | "conversation">("info");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1443,10 +1691,15 @@ function Detail({
       setBusy(false);
     }
   }
+  const tabs = [
+    { id: "info", label: "Información" },
+    { id: "activity", label: "Actividad" },
+    { id: "conversation", label: "Conversación" },
+  ] as const;
   return (
     <Modal
       title={detail?.lead.name || "Oportunidad"}
-      subtitle="La información que necesitas para continuar la conversación."
+      subtitle="Ficha de la oportunidad"
       onClose={onClose}
       wide
     >
@@ -1456,100 +1709,193 @@ function Detail({
         </p>
       )}
       {detail ? (
-        <div className="detail-layout">
-          <form onSubmit={save}>
-            <LeadFields input={draft} setInput={setDraft} labels={labels} />
-            <div className="manual-whatsapp">
-              {whatsappContactUrl(draft.phone) ? (
-                <a
-                  className="secondary whatsapp-action"
-                  href={whatsappContactUrl(draft.phone)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <MessageSquare size={16} /> Abrir conversación en WhatsApp
-                </a>
-              ) : (
-                <p>
-                  Para abrir WhatsApp, guarda el teléfono con indicativo
-                  internacional.
-                </p>
-              )}
+        <>
+          <div className="detail-contact">
+            <span className="detail-avatar">{initials(detail.lead.name)}</span>
+            <div>
+              <span className={`stage-pill stage-${detail.lead.stage}`}>
+                {labels[detail.lead.stage]}
+              </span>
               <p>
-                La respuesta se hace en WhatsApp. Registra aquí las notas y el
-                siguiente paso; los mensajes de la aplicación Business todavía
-                no se sincronizan.
+                {detail.lead.phone ||
+                  detail.lead.email ||
+                  "Sin datos de contacto"}
               </p>
+              <small>Creado el {dateLabel(detail.lead.createdAt)}</small>
             </div>
-            <div className="form-actions">
-              <button className="primary" disabled={busy}>
-                {busy ? "Guardando…" : "Guardar cambios"}
-              </button>
-            </div>
-          </form>
-          <section className="activity-section">
-            {conversation?.session && (
-              <div className="buyer-summary">
-                <strong>
-                  {conversation.session.state === "opted_out"
-                    ? "Seguimiento automático detenido"
-                    : ["human", "ready"].includes(conversation.session.state)
-                      ? "Atención del equipo pendiente"
-                      : "Solicitud en curso"}
-                </strong>
-                {conversation.session.profile.segment && (
-                  <p>
-                    Tipo de comprador: {conversation.session.profile.segment}
-                  </p>
-                )}
-                {conversation.session.profile.quantity && (
-                  <p>
-                    Unidades de interés: {conversation.session.profile.quantity}
-                  </p>
-                )}
-                {conversation.session.profile.city && (
-                  <p>Ciudad: {conversation.session.profile.city}</p>
-                )}
-                {conversation.session.profile.sampleRequested !== undefined && (
-                  <p>
-                    Muestra:{" "}
-                    {conversation.session.profile.sampleRequested
-                      ? "Solicitada, pendiente de aprobación"
-                      : "No solicitada"}
-                  </p>
-                )}
-              </div>
+          </div>
+          <div className="manual-whatsapp">
+            {whatsappContactUrl(detail.lead.phone) ? (
+              <a
+                className="secondary whatsapp-action"
+                href={whatsappContactUrl(detail.lead.phone)!}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageSquare size={17} /> Abrir conversación en WhatsApp{" "}
+                <ArrowUpRight size={15} />
+              </a>
+            ) : (
+              <p>
+                Añade un teléfono con indicativo internacional para abrir
+                WhatsApp.
+              </p>
             )}
-            <h3>
-              <MessageSquare size={18} /> Historial y notas
-            </h3>
-            <p className="form-hint">
-              Registro interno. No envía mensajes al contacto.
+            <p>
+              Responde desde WhatsApp y registra aquí el resultado de la
+              conversación.
             </p>
-            <form onSubmit={addNote}>
-              <textarea
-                aria-label="Nueva nota"
-                placeholder="¿Qué hablaron? ¿Qué falta para avanzar?"
-                maxLength={4000}
-                required
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-              <button className="secondary" disabled={busy || !note.trim()}>
-                <Plus size={15} /> Agregar nota
+          </div>
+          <div
+            className="detail-tabs"
+            role="tablist"
+            aria-label="Ficha del lead"
+          >
+            {tabs.map((item, index) => (
+              <button
+                key={item.id}
+                id={`detail-tab-${item.id}`}
+                role="tab"
+                aria-selected={tab === item.id}
+                aria-controls="detail-panel"
+                tabIndex={tab === item.id ? 0 : -1}
+                onClick={() => setTab(item.id)}
+                onKeyDown={(event) => {
+                  let next = index;
+                  if (event.key === "ArrowRight")
+                    next = (index + 1) % tabs.length;
+                  else if (event.key === "ArrowLeft")
+                    next = (index + tabs.length - 1) % tabs.length;
+                  else if (event.key === "Home") next = 0;
+                  else if (event.key === "End") next = tabs.length - 1;
+                  else return;
+                  event.preventDefault();
+                  setTab(tabs[next].id);
+                  document
+                    .getElementById(`detail-tab-${tabs[next].id}`)
+                    ?.focus();
+                }}
+              >
+                {item.label}
+                {item.id === "activity" && (
+                  <span aria-hidden="true">{detail.activities.length}</span>
+                )}
               </button>
-            </form>
-            <div className="meta-conversation">
-              {conversation?.messages.length ? (
-                <>
-                  <h4>Conversación de WhatsApp</h4>
-                  {conversation.messages.map((m) => (
+            ))}
+          </div>
+          <section
+            id="detail-panel"
+            role="tabpanel"
+            aria-labelledby={`detail-tab-${tab}`}
+            className="detail-panel"
+          >
+            {tab === "info" ? (
+              <form onSubmit={save}>
+                <div className="form-section-title">
+                  <Users size={18} />
+                  <h3>Datos del contacto y la oportunidad</h3>
+                </div>
+                <LeadFields input={draft} setInput={setDraft} labels={labels} />
+                <div className="form-actions">
+                  <span>Guarda los cambios antes de cerrar.</span>
+                  <button className="primary" disabled={busy}>
+                    {busy ? "Guardando…" : "Guardar cambios"}
+                    <Check size={16} />
+                  </button>
+                </div>
+              </form>
+            ) : tab === "activity" ? (
+              <section className="activity-section">
+                {conversation?.session && (
+                  <div className="buyer-summary">
+                    <strong>
+                      {conversation.session.state === "opted_out"
+                        ? "Seguimiento automático detenido"
+                        : ["human", "ready"].includes(
+                              conversation.session.state,
+                            )
+                          ? "Atención del equipo pendiente"
+                          : "Solicitud en curso"}
+                    </strong>
+                    {conversation.session.profile.segment && (
+                      <p>
+                        Tipo de comprador:{" "}
+                        {conversation.session.profile.segment}
+                      </p>
+                    )}
+                    {conversation.session.profile.quantity && (
+                      <p>
+                        Unidades de interés:{" "}
+                        {conversation.session.profile.quantity}
+                      </p>
+                    )}
+                    {conversation.session.profile.city && (
+                      <p>Ciudad: {conversation.session.profile.city}</p>
+                    )}
+                    {conversation.session.profile.sampleRequested !==
+                      undefined && (
+                      <p>
+                        Muestra:{" "}
+                        {conversation.session.profile.sampleRequested
+                          ? "Solicitada, pendiente de aprobación"
+                          : "No solicitada"}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div className="form-section-title">
+                  <MessageSquare size={18} />
+                  <h3>Registrar una nota</h3>
+                </div>
+                <p className="form-hint">
+                  Solo la ve tu equipo. No envía un mensaje al cliente.
+                </p>
+                <form onSubmit={addNote}>
+                  <textarea
+                    aria-label="Nueva nota"
+                    placeholder="Resultado de la conversación y próximo paso…"
+                    maxLength={4000}
+                    required
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                  />
+                  <button className="primary" disabled={busy || !note.trim()}>
+                    <Plus size={16} /> Agregar nota
+                  </button>
+                </form>
+                <h3 className="timeline-title">Historial de la oportunidad</h3>
+                <div className="timeline">
+                  {detail.activities.map((activity) => (
+                    <article
+                      key={activity.id}
+                      className={`activity activity-${activity.kind}`}
+                    >
+                      <span className="timeline-dot">
+                        {activity.kind === "note" ? (
+                          <MessageSquare size={13} />
+                        ) : (
+                          <Check size={13} />
+                        )}
+                      </span>
+                      <small>{dateLabel(activity.createdAt)}</small>
+                      <p>{activity.body}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="meta-conversation">
+                {conversation?.messages.length ? (
+                  conversation.messages.map((message) => (
                     <div
-                      key={m.id}
-                      className={`chat-message chat-${m.direction === "inbound" ? "user" : "bot"}`}
+                      key={message.id}
+                      className={`chat-message chat-${message.direction === "inbound" ? "user" : "bot"}`}
                     >
                       <small>
-                        {m.direction === "inbound" ? "Cliente" : "Asistente"} ·{" "}
+                        {message.direction === "inbound"
+                          ? "Cliente"
+                          : "Asistente"}{" "}
+                        ·{" "}
                         {(
                           {
                             draft: "Borrador, sin enviar",
@@ -1561,30 +1907,27 @@ function Detail({
                             expired: "Borrador vencido",
                             sending: "En proceso",
                           } as Record<string, string>
-                        )[m.state] || m.state}
+                        )[message.state] || message.state}{" "}
+                        · {dateLabel(message.createdAt)}
                       </small>
-                      <p>{m.body}</p>
+                      <p>{message.body}</p>
                     </div>
-                  ))}
-                </>
-              ) : null}
-            </div>
-            <div className="timeline">
-              {detail.activities.map((a: Activity) => (
-                <article key={a.id} className={`activity activity-${a.kind}`}>
-                  <span className="timeline-dot" />
-                  <small>{dateLabel(a.createdAt)}</small>
-                  <p>{a.body}</p>
-                </article>
-              ))}
-            </div>
+                  ))
+                ) : (
+                  <Empty
+                    icon={<MessageSquare size={28} />}
+                    title="Sin mensajes sincronizados"
+                    text="La atención actual se hace en WhatsApp Business. La sincronización de mensajes requiere conectar Meta."
+                  />
+                )}
+              </section>
+            )}
           </section>
-        </div>
+        </>
       ) : (
         !error && (
           <div className="large-empty">
-            <LoaderCircle className="spin" />
-            Cargando oportunidad…
+            <LoaderCircle className="spin" /> Cargando oportunidad…
           </div>
         )
       )}

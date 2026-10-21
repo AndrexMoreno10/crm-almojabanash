@@ -4,14 +4,22 @@ import {
   Clock3,
   LayoutGrid,
   LoaderCircle,
+  Check,
   Users,
+  TrendingUp,
 } from "lucide-react";
-import { canFollowUp, type Lead, type Stage } from "../shared/types";
-
+import {
+  canFollowUp,
+  isOpenStage,
+  pipelineStages,
+  type Lead,
+  type Stage,
+} from "../shared/types";
 interface Props {
   leads: Lead[];
   labels: Record<Stage, string>;
   loading: boolean;
+  unavailable: boolean;
   now: number;
   onOpen: (id: string) => void;
   onPipeline: () => void;
@@ -22,11 +30,11 @@ const date = (value: string) =>
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-
 export default function Overview({
   leads,
   labels,
   loading,
+  unavailable,
   now,
   onOpen,
   onPipeline,
@@ -37,78 +45,169 @@ export default function Overview({
     .sort(
       (a, b) => Date.parse(a.nextContactAt!) - Date.parse(b.nextContactAt!),
     );
+  const overdue = scheduled.filter(
+    (lead) => Date.parse(lead.nextContactAt!) < now,
+  );
+  const total = leads.filter((lead) => lead.stage !== "lost").length;
+  const estimated = leads
+    .filter((lead) => isOpenStage(lead.stage))
+    .reduce((sum, lead) => sum + lead.value, 0);
+  if (unavailable)
+    return (
+      <div className="data-unavailable">
+        <CalendarClock size={28} />
+        <h2>No se pudo cargar la operación</h2>
+        <p>Usa Actualizar para volver a consultar tus oportunidades.</p>
+      </div>
+    );
   return (
-    <div className="overview-grid">
-      <section
-        className="board-section overview-panel"
-        aria-labelledby="overview-followups-title"
-      >
-        <div className="section-heading">
-          <div>
-            <h2 id="overview-followups-title">
-              Seguimientos por atender <span>{scheduled.length}</span>
-            </h2>
-            <p>Primero los vencidos, después las próximas conversaciones.</p>
-          </div>
-          <button className="text-button" onClick={onFollowups}>
-            Ver agenda <ArrowRight size={16} />
-          </button>
+    <div className="overview-workspace">
+      <div className={`priority-banner ${overdue.length ? "has-pending" : ""}`}>
+        <span className="priority-icon">
+          {overdue.length ? <Clock3 size={23} /> : <Check size={23} />}
+        </span>
+        <div>
+          <strong>
+            {loading
+              ? "Consultando seguimientos…"
+              : overdue.length
+                ? `${overdue.length} seguimiento${overdue.length === 1 ? "" : "s"} vencido${overdue.length === 1 ? "" : "s"}`
+                : "Sin seguimientos vencidos"}
+          </strong>
+          <p>
+            {overdue.length
+              ? "Retoma estos contactos y registra el siguiente paso."
+              : "Programa el próximo contacto desde la ficha de cada oportunidad."}
+          </p>
         </div>
-        {loading ? (
-          <div className="large-empty">
-            <LoaderCircle className="spin" />
-            <p>Cargando seguimientos…</p>
-          </div>
-        ) : scheduled.length ? (
-          <div className="overview-rows">
-            {scheduled.slice(0, 5).map((lead) => (
-              <button
-                className="overview-row"
-                key={lead.id}
-                onClick={() => onOpen(lead.id)}
-              >
-                <span className="overview-row-icon">
-                  <CalendarClock size={19} />
-                </span>
-                <span className="overview-row-content">
-                  <strong>{lead.name}</strong>
-                  <small>
-                    {lead.owner || "Sin responsable"} · {labels[lead.stage]}
-                  </small>
-                  <time
-                    className={
-                      Date.parse(lead.nextContactAt!) < now ? "late" : ""
-                    }
-                  >
-                    <Clock3 size={11} />
-                    {date(lead.nextContactAt!)}
-                  </time>
-                </span>
-                <ArrowRight size={15} />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="large-empty">
-            <span className="empty-icon">
-              <CalendarClock size={26} />
-            </span>
-            <h3>Un próximo paso para cada lead</h3>
-            <p>Programa un contacto desde su ficha y lo verás aquí.</p>
-            <button className="secondary" onClick={onPipeline}>
-              Ir al embudo <ArrowRight size={15} />
+        <button className="secondary" onClick={onFollowups}>
+          Abrir agenda <ArrowRight size={16} />
+        </button>
+      </div>
+      <div className="overview-grid">
+        <section
+          className="board-section overview-panel"
+          aria-labelledby="overview-followups-title"
+        >
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">PRIORIDAD DEL EQUIPO</span>
+              <h2 id="overview-followups-title">
+                Seguimientos por atender{" "}
+                <span>{loading ? "—" : scheduled.length}</span>
+              </h2>
+            </div>
+            <button className="text-button" onClick={onFollowups}>
+              Ver todos <ArrowRight size={16} />
             </button>
           </div>
-        )}
-      </section>
+          {loading ? (
+            <div className="large-empty">
+              <LoaderCircle className="spin" />
+              <p>Cargando agenda…</p>
+            </div>
+          ) : scheduled.length ? (
+            <div className="overview-rows">
+              {scheduled.slice(0, 5).map((lead) => (
+                <button
+                  className="overview-row"
+                  key={lead.id}
+                  onClick={() => onOpen(lead.id)}
+                >
+                  <span className="overview-row-icon">
+                    {lead.name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="overview-row-content">
+                    <strong>{lead.name}</strong>
+                    <small>
+                      {lead.owner || "Sin responsable"} · {labels[lead.stage]}
+                    </small>
+                  </span>
+                  <span
+                    className={`overview-due ${Date.parse(lead.nextContactAt!) < now ? "late" : ""}`}
+                  >
+                    <span>
+                      <Clock3 size={12} />
+                      {Date.parse(lead.nextContactAt!) < now
+                        ? "Vencido"
+                        : "Programado"}
+                    </span>
+                    <time>{date(lead.nextContactAt!)}</time>
+                  </span>
+                  <ArrowRight size={16} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="large-empty">
+              <span className="empty-icon">
+                <CalendarClock size={28} />
+              </span>
+              <h3>Agenda tu primer seguimiento</h3>
+              <p>Abre un contacto y define cuándo volverás a hablar con él.</p>
+              <button className="secondary" onClick={onPipeline}>
+                Ir al embudo <ArrowRight size={16} />
+              </button>
+            </div>
+          )}
+          <div className="panel-footnote">
+            <CalendarClock size={15} /> Se muestran primero los contactos
+            vencidos.
+          </div>
+        </section>
+        <section
+          className="board-section funnel-panel"
+          aria-labelledby="funnel-title"
+        >
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">
+                ESTADO DE LAS OPORTUNIDADES
+              </span>
+              <h2 id="funnel-title">Distribución del embudo</h2>
+            </div>
+            <LayoutGrid size={20} />
+          </div>
+          <div className="funnel-breakdown">
+            {pipelineStages.map((stage, index) => {
+              const count = leads.filter((lead) => lead.stage === stage).length;
+              return (
+                <div className={`funnel-row stage-${stage}`} key={stage}>
+                  <span className="funnel-number">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <div className="funnel-row-label">
+                      <span>{labels[stage]}</span>
+                      <strong>{loading ? "—" : count}</strong>
+                    </div>
+                    <div className="funnel-track">
+                      <span
+                        style={{
+                          width: loading
+                            ? "0%"
+                            : `${(count / Math.max(total, 1)) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button className="funnel-link text-button" onClick={onPipeline}>
+            Gestionar embudo <ArrowRight size={16} />
+          </button>
+        </section>
+      </div>
       <section
-        className="board-section overview-panel"
+        className="board-section recent-panel"
         aria-labelledby="overview-leads-title"
       >
         <div className="section-heading">
           <div>
+            <span className="section-kicker">ÚLTIMA ACTIVIDAD</span>
             <h2 id="overview-leads-title">Oportunidades actualizadas</h2>
-            <p>Retoma el contexto de los contactos más recientes.</p>
           </div>
           <button className="text-button" onClick={onPipeline}>
             Ver embudo <ArrowRight size={16} />
@@ -117,45 +216,70 @@ export default function Overview({
         {loading ? (
           <div className="large-empty">
             <LoaderCircle className="spin" />
-            <p>Cargando oportunidades…</p>
+            <p>Cargando contactos…</p>
           </div>
         ) : leads.length ? (
-          <div className="overview-rows">
-            {leads.slice(0, 5).map((lead) => (
-              <button
-                className="overview-row"
-                key={lead.id}
-                onClick={() => onOpen(lead.id)}
-              >
-                <span className="overview-row-icon">
-                  <Users size={19} />
-                </span>
-                <span className="overview-row-content">
-                  <strong>{lead.name}</strong>
-                  <small>
-                    {lead.source || "Sin canal"} · {labels[lead.stage]}
-                  </small>
-                  <time>{date(lead.updatedAt)}</time>
-                </span>
-                <ArrowRight size={15} />
-              </button>
-            ))}
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Contacto</th>
+                  <th>Etapa comercial</th>
+                  <th>Responsable</th>
+                  <th>Última actualización</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leads.slice(0, 5).map((lead) => (
+                  <tr key={lead.id}>
+                    <td>
+                      <button
+                        className="contact-link"
+                        onClick={() => onOpen(lead.id)}
+                      >
+                        <span className="table-avatar">
+                          {lead.name.slice(0, 2).toUpperCase()}
+                        </span>
+                        <span>
+                          <strong>{lead.name}</strong>
+                          <small>{lead.source || "Sin canal"}</small>
+                        </span>
+                      </button>
+                    </td>
+                    <td>
+                      <span className={`stage-pill stage-${lead.stage}`}>
+                        {labels[lead.stage]}
+                      </span>
+                    </td>
+                    <td>{lead.owner || "Sin asignar"}</td>
+                    <td>{date(lead.updatedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className="large-empty">
+          <div className="recent-empty">
             <span className="empty-icon">
-              <LayoutGrid size={26} />
+              <Users size={27} />
             </span>
-            <h3>Tu proceso de ventas, en su lugar</h3>
-            <p>
-              En Embudo de ventas puedes organizar los leads por etapa y
-              consultar su historial.
-            </p>
-            <button className="secondary" onClick={onPipeline}>
-              Abrir embudo <ArrowRight size={15} />
-            </button>
+            <div>
+              <h3>Tu lista de contactos empieza aquí</h3>
+              <p>Usa Nueva oportunidad para añadir el primer lead.</p>
+            </div>
           </div>
         )}
+        <div className="estimated-value">
+          <TrendingUp size={16} />
+          <span>Valor estimado de oportunidades abiertas</span>
+          <strong>
+            {loading
+              ? "—"
+              : new Intl.NumberFormat("es-CO", {
+                  maximumFractionDigits: 0,
+                }).format(estimated)}
+          </strong>
+        </div>
       </section>
     </div>
   );

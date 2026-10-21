@@ -7,15 +7,17 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web \"tsx watch server/main.ts\" \"vite --host 127.0.0.1\"",
+    "dev": "node scripts/dev-local.mjs",
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/main.ts",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.*",
     "check": "npm run build && npm test",
     "test:e2e": "tsx --test tests/browser.e2e.ts",
-    "review": "tsx scripts/review-local.ts"
+    "review": "tsx scripts/review-local.ts",
+    "dev:sync": "node scripts/dev-local.mjs --sync"
   },
   "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
     "express": "^5.1.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
@@ -23,6 +25,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
