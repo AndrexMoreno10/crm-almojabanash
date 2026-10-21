@@ -4,7 +4,9 @@
 
 El código y las pruebas locales del adaptador están preparados. **No se ha verificado ninguna cuenta ni enviado un mensaje real.** Instagram y Facebook siguen pendientes; el endpoint actual solo procesa eventos de texto de WhatsApp. Los estados de entrega, adjuntos y medios no se procesan todavía. `sent` significa que la API aceptó la solicitud, no que el destinatario la haya recibido o leído.
 
-La integración usa la API oficial y un número de WhatsApp Cloud API. Tener la aplicación WhatsApp Business o un repositorio en GitHub no demuestra acceso a esa API. La incorporación o coexistencia del número actual debe comprobarse en la configuración y documentación vigente de Meta; no desconectes ni migres el número sin revisar sus condiciones.
+La integración usa la API oficial y un número de WhatsApp Cloud API. Tener la aplicación WhatsApp Business o un repositorio en GitHub no demuestra acceso a esa API. Meta documenta una modalidad de **Coexistencia** para incorporar determinados números de la aplicación WhatsApp Business y seguir usando la aplicación. La elegibilidad del número y de la cuenta debe comprobarse durante el registro; no desconectes ni migres el número comercial por fuera de ese recorrido.
+
+El 21 de octubre de 2026 se consultó la documentación oficial vigente de Coexistencia. Si el negocio acepta compartir su información, Meta documenta sincronización de contactos y de los chats de los últimos 180 días. La solicitud de sincronización debe iniciarse dentro de las 24 horas posteriores al registro y solo puede iniciarse una vez sin cancelar y repetir el registro. El código actual todavía **no procesa** los webhooks `history`, `smb_message_echoes` ni la sincronización de contactos; por eso conectar ahora solo pintaría mensajes de texto nuevos. Hay que implementar y probar esos eventos antes de incorporar el número real si se desea importar el historial.
 
 ## Requisitos externos
 
@@ -12,6 +14,7 @@ La integración usa la API oficial y un número de WhatsApp Cloud API. Tener la 
 - Cuenta de WhatsApp Business y número habilitado para Cloud API.
 - Token con permisos de envío para esa cuenta, según la configuración vigente de Meta.
 - URL HTTPS accesible para verificar y recibir webhooks.
+- Servidor Node activo y almacenamiento persistente. El SQLite local del proyecto no debe alojarse en el sistema de archivos temporal de una función serverless.
 - Configuración comercial aprobada: ubicación, cobertura, muestras y traspaso a una persona.
 
 Referencias oficiales para revisar al conectar:
@@ -19,8 +22,27 @@ Referencias oficiales para revisar al conectar:
 - https://developers.facebook.com/docs/whatsapp/cloud-api/overview
 - https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components
 - https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages
+- https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users/
 
-La documentación externa no se pudo consultar en la sesión inicial porque el proxy no permitía `developers.facebook.com`. Las pruebas usan fixtures y transporte simulado; se debe contrastar la versión y los permisos actuales al hacer la conexión real.
+Las pruebas usan fixtures y transporte simulado; la versión, los permisos y la elegibilidad deben contrastarse en la app real al hacer la conexión.
+
+## Datos que hay que obtener en Meta
+
+1. Crear una app en [Meta for Developers → Mis apps](https://developers.facebook.com/apps/) y asociarla al portafolio comercial de Almojábanas Huilenses MJ.
+2. Agregar el caso de uso o producto de WhatsApp y completar primero una prueba con el número de prueba de Meta.
+3. Anotar, sin compartirlos por chat, el ID de la app, el ID de la cuenta de WhatsApp Business y el ID del número. El CRM usa directamente `WHATSAPP_PHONE_NUMBER_ID`.
+4. Elegir un token de verificación privado para el webhook y guardar el secreto de la app en el servidor.
+5. Crear una credencial duradera con los permisos que Meta muestre para administrar y enviar mensajes de esa cuenta; el token temporal de Primeros pasos es únicamente para la prueba inicial.
+6. Revisar en el flujo oficial si el número actual ofrece Coexistencia. Si la ofrece, confirmar con el dueño el uso compartido de contactos e historial y mantener abierta la aplicación durante la sincronización.
+7. Configurar y suscribir la URL HTTPS del webhook al campo `messages`. Para Coexistencia también harán falta los eventos de historial y ecos que se implementen.
+
+No publiques aquí el secreto ni los tokens. Las capturas pueden mostrar los nombres de los campos y los identificadores no secretos, ocultando cualquier valor sensible.
+
+## Alojamiento
+
+El proyecto actual usa un proceso Express de larga duración y un archivo SQLite. Un despliegue convencional de Vercel no ofrece esa combinación con persistencia estable. Para la prueba real se necesita un servicio Node con disco persistente o migrar la base a un servicio persistente. Además, la interfaz y las demás API siguen sin autenticación; no deben quedar públicas solo para exponer el webhook.
+
+La opción de menor cambio es desplegar el servidor en un servicio que admita un proceso Node y un volumen persistente, proteger la aplicación y publicar el webhook por HTTPS. La alternativa más escalable es migrar SQLite a una base gestionada antes de publicar. La decisión de alojamiento debe tomarse antes de registrar la URL definitiva en Meta.
 
 ## Variables del proceso
 
