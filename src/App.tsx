@@ -1,5 +1,6 @@
 import Overview from "./Overview";
 import SourceLabel from "./SourceLabel";
+import BrandIdentity from "./BrandIdentity";
 import {
   attentionLabels,
   matchesAttention,
@@ -134,6 +135,14 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export default function App() {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!icon) return;
+    icon.href = logoUrl || "/favicon.svg";
+    if (logoUrl) icon.removeAttribute("type");
+    else icon.type = "image/svg+xml";
+  }, [logoUrl]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [settings, setSettings] = useState<Settings>({
     stageLabels: defaultLabels,
@@ -308,6 +317,29 @@ export default function App() {
         });
     }
   }
+  async function changeSource(lead: Lead, source: string) {
+    if (movingId || !source) return;
+    setMovingId(lead.id);
+    try {
+      const updated = await api<Lead>(`/leads/${lead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ source }),
+      });
+      setLeads((before) =>
+        before.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setNotice("Canal actualizado");
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLButtonElement>(`[data-lead-open="${lead.id}"]`)
+          ?.focus(),
+      );
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setMovingId(null);
+    }
+  }
   const exportable =
     view === "pipeline"
       ? filtered.filter((lead) =>
@@ -410,25 +442,10 @@ export default function App() {
         >
           <X size={20} />
         </button>
-        <a
-          className="brand"
-          aria-label="Almojábanas Huilenses: inicio"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("overview");
-          }}
-        >
-          <span className="brand-symbol">
-            AH
-            <span />
-          </span>
-          <div>
-            <strong>ALMOJÁBANAS</strong>
-            <strong>HUILENSES</strong>
-            <span className="brand-caption">GESTIÓN COMERCIAL</span>
-          </div>
-        </a>
+        <BrandIdentity
+          onHome={() => navigate("overview")}
+          onLogoChange={setLogoUrl}
+        />
         <div className="workspace">
           <span className="workspace-icon">A</span>
           <div>
@@ -506,7 +523,13 @@ export default function App() {
             <Settings2 size={18} /> Configurar etapas
           </button>
           <div className="profile">
-            <span className="avatar">AH</span>
+            <span className="avatar">
+              {logoUrl ? (
+                <img className="profile-logo" src={logoUrl} alt="" />
+              ) : (
+                "AH"
+              )}
+            </span>
             <div>
               Almojábanas Huilenses<small>Armenia, Quindío</small>
             </div>
@@ -856,6 +879,9 @@ export default function App() {
                               labels={settings.stageLabels}
                               moving={Boolean(movingId)}
                               onMove={(stage) => void moveLead(lead, stage)}
+                              onSource={(source) =>
+                                void changeSource(lead, source)
+                              }
                               onClick={() => setSelected(lead.id)}
                             />
                           ))}
@@ -906,6 +932,9 @@ export default function App() {
                             labels={settings.stageLabels}
                             moving={Boolean(movingId)}
                             onMove={(stage) => void moveLead(lead, stage)}
+                            onSource={(source) =>
+                              void changeSource(lead, source)
+                            }
                             onClick={() => setSelected(lead.id)}
                           />
                           <p className="lost-reason">
@@ -1139,12 +1168,14 @@ function LeadCard({
   labels,
   moving,
   onMove,
+  onSource,
 }: {
   lead: Lead;
   clock: number;
   labels: Record<Stage, string>;
   moving: boolean;
   onMove: (stage: Stage) => void;
+  onSource: (source: string) => void;
   onClick: () => void;
 }) {
   const late =
@@ -1162,6 +1193,7 @@ function LeadCard({
     >
       <button
         className="lead-card-open"
+        data-lead-open={lead.id}
         onClick={onClick}
         aria-label={`Ver detalle de ${lead.name}`}
       >
@@ -1199,6 +1231,24 @@ function LeadCard({
           </span>
         )}
       </button>
+      {!lead.source.trim() && (
+        <select
+          className="missing-source"
+          aria-label={`Canal de origen de ${lead.name}`}
+          value=""
+          disabled={moving}
+          onChange={(event) => onSource(event.target.value)}
+        >
+          <option value="" disabled>
+            Asignar canal
+          </option>
+          <option>WhatsApp</option>
+          <option>Instagram</option>
+          <option>Facebook</option>
+          <option>Referido</option>
+          <option>Otro</option>
+        </select>
+      )}
       <div className="card-footer">
         {lead.owner && (
           <span className="card-owner" title={lead.owner}>

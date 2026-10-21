@@ -149,7 +149,8 @@ small {
   right: -4px;
   top: -4px;
 }
-.brand > div {
+.brand > div,
+.brand-copy {
   display: flex;
   flex-direction: column;
   line-height: 1.18;
@@ -170,6 +171,60 @@ small {
   font-weight: 700;
   margin-top: 9px;
   color: #53647e;
+}
+.brand-logo-control {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 8px;
+}
+.brand-logo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+.brand-logo-edit {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  background: #0955ad;
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+.brand-feedback {
+  padding: 0 8px;
+  margin: -12px 0 14px;
+  font-size: 11px;
+  color: #0955ad;
+}
+.brand-error {
+  color: #992c21;
+}
+.profile-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+.missing-source {
+  margin-top: 7px;
+  min-height: 28px;
+  padding: 3px 6px;
+  max-width: 145px;
+  font-size: 11px;
+  color: #0955ad;
+  background: #f1f6ff;
+  border: 1px solid #b8cce7;
+  border-radius: 5px;
 }
 .workspace {
   display: flex;

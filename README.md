@@ -72,7 +72,7 @@ npm run check
 npm run test:e2e
 ```
 
-`check` compila TypeScript y Vite y ejecuta veintidós pruebas de API, persistencia, revisión de fichas, bot, Meta y sincronización Git, incluyendo la conservación de archivos ignorados. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, ocho etapas, pérdida y recuperación, indicadores, notas, filtros, exportación, recarga, conversación del bot y tamaño móvil. También ejecuta axe sobre las vistas principales para detectar problemas WCAG A/AA. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las capturas se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png`, `/tmp/almo-crm-mobile.png`, `/tmp/almo-crm-overview.png` y `/tmp/almo-crm-overview-mobile.png`.
+`check` compila TypeScript y Vite y ejecuta veinticuatro pruebas de API, persistencia, revisión de fichas, identidad visual, bot, Meta y sincronización Git, incluyendo la conservación de archivos ignorados. `test:e2e` inicia su propio servidor y base temporal, usa Chromium y prueba registro, ocho etapas, pérdida y recuperación, indicadores, notas, filtros, exportación, recarga, asignación del canal a leads existentes, carga del logo, conversación del bot y tamaño móvil. También ejecuta axe sobre las vistas principales para detectar problemas WCAG A/AA. Usa `/usr/bin/chromium`; otra instalación puede indicarse con `CHROMIUM_PATH`. Las capturas se guardan fuera del repositorio, en `/tmp/almo-crm-desktop.png`, `/tmp/almo-crm-mobile.png`, `/tmp/almo-crm-overview.png` y `/tmp/almo-crm-overview-mobile.png`.
 
 ## Antes de atender clientes reales
 
@@ -100,3 +100,7 @@ Estos comandos se necesitan una vez para recibir el nuevo iniciador. Después pu
 La ampliación del embudo se aplica al arrancar. Conserva los identificadores de las etapas anteriores, los leads, las notas, los seguimientos y las etiquetas personalizadas. Añade las etapas nuevas y actualiza únicamente los nombres predeterminados antiguos. La actualización se registra una sola vez; no borres `data/crm.sqlite` para actualizar.
 
 Las ocho columnas se recorren horizontalmente. El botón **Perdidas** conserva los cierres negativos fuera del recorrido principal. Los cambios de etapa son manuales; ninguna muestra se aprueba ni ningún pedido se entrega automáticamente por mover una tarjeta.
+
+Si un contacto antiguo no tiene canal registrado, su tarjeta ofrece **Asignar canal**. Al elegir WhatsApp, Instagram o Facebook se guarda el origen y aparece el icono correspondiente. Tener teléfono no asigna WhatsApp automáticamente. Puedes corregir un canal ya registrado desde la ficha del contacto.
+
+Para instalar el logo original del negocio, pulsa la cámara junto a **AH** en el sidebar y selecciona un PNG, JPG o WebP de hasta 2 MB y 4096 × 4096 píxeles. Se conserva el archivo en SQLite y se utiliza en el sidebar, el avatar y el icono de la pestaña. Persiste al recargar y reiniciar; no requiere recompilar ni subir el archivo a GitHub. El monograma sigue visible hasta cargar el archivo en ese CRM.

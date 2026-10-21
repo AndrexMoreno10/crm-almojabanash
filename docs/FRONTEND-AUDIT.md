@@ -16,7 +16,7 @@ Fecha: 21 de octubre de 2026. Alcance: navegación, resumen, Kanban de ocho etap
 | Simulador editable durante un envío pendiente    | Controles bloqueados durante la petición y desplazamiento al último mensaje.                                                                    |
 | Exportación no ajustada a la vista de perdidas   | El CSV respeta el conjunto visible, además de sus filtros.                                                                                      |
 
-Los tonos son una interpretación de los tres colores indicados por el usuario; no se han recibido códigos oficiales ni logotipo. El monograma tipográfico sirve como identidad provisional. No se añaden cifras comerciales, clientes ni condiciones inventadas para rellenar la interfaz.
+Los tonos son una interpretación de los tres colores indicados por el usuario; no se han recibido códigos oficiales. El usuario compartió el logo en el chat, pero el archivo original no está disponible en el checkout. El monograma tipográfico sirve como identidad provisional hasta cargar ese archivo desde el sidebar. No se añaden cifras comerciales, clientes ni condiciones inventadas para rellenar la interfaz.
 
 ### Ajuste de densidad del embudo
 
@@ -26,7 +26,7 @@ Las columnas pasan de 248 a 300 píxeles mínimos en escritorio. Las tarjetas mu
 
 ## Validación
 
-- `npm run check`: TypeScript, compilación de Vite y veintidós pruebas de negocio, revisión de fichas, persistencia y sincronización Git.
+- `npm run check`: TypeScript, compilación de Vite y veinticuatro pruebas de negocio, revisión de fichas, identidad visual, persistencia y sincronización Git.
 - `npm run test:e2e`: recorrido completo con SQLite temporal, ocho etapas, notas, recarga, indicadores, filtros, CSV, simulador y estados de error; revisión automática con axe de vistas principales, ficha y navegación móvil.
 - Escritorio de 1440 y 1280 píxeles y móvil de 390 píxeles; comprobación de desbordamiento de página y capturas fuera del repositorio.
 - Diez leads en una etapa: varias tarjetas completas visibles, nombres largos acotados, desplazamiento dentro de la columna sin alargar la página y apertura del detalle desde una tarjeta al final de la lista.
@@ -43,3 +43,9 @@ El workflow de GitHub valida compilación y pruebas en cada push a main o pull r
 ## Inicio simplificado para la gestión comercial
 
 El Resumen se sustituyó por una sola lista con tres pestañas: Por atender, Seguimientos y Por cerrar. Los leads vencidos aparecen primero en seguimientos y las conversaciones sin próxima fecha también se incluyen. Cada fila abre su ficha y permite identificar el siguiente paso; la lista completa conserva el mismo filtro. Se retiraron las tarjetas grandes, el gráfico, el valor estimado, los contactos recientes y la tarjeta lateral de agenda del inicio. Los resultados de primera compra y recurrencia quedan en una línea breve. Se conserva Sin revisar en CRM como acceso secundario. No se incorpora inventario. Los criterios completos están en DASHBOARD.md.
+
+## Logos y contactos existentes
+
+Los iconos sociales dependen del canal registrado. Las tarjetas antiguas sin canal ofrecen un selector compacto para asignarlo sin abrir la ficha; al guardar desaparece el selector y aparece el icono. No se infiere el origen a partir del teléfono ni se modifica su etapa.
+
+La cámara del sidebar permite cargar el logo original desde el equipo del usuario. El navegador comprueba que pueda leer la imagen y sus dimensiones; la API limita tamaño y tipos raster, valida su firma y conserva los bytes en SQLite. La imagen actualiza sidebar, avatar y favicon sin build. La prueba de navegador asigna WhatsApp a un contacto sin canal, carga una imagen de prueba y comprueba ambos resultados tras recargar. Las pruebas de API comprueban persistencia al reiniciar, conservación de leads y notas y rechazo de cargas inválidas.

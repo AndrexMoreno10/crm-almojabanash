@@ -1,4 +1,5 @@
 import { migratePipelineSettings } from "./migrations.ts";
+import { installBranding } from "./branding.ts";
 import express from "express";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
@@ -146,6 +147,7 @@ export function createApp(
     }),
   );
   const meta = installMeta(app, db, metaConfig);
+  installBranding(app, db);
   app.get("/api/health", (_req, res) => {
     db.prepare("SELECT 1").get();
     res.json({ status: "ok" });

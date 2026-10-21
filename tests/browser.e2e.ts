@@ -450,7 +450,7 @@ test(
           page.request.post("http://127.0.0.1:3101/api/leads", {
             data: {
               name: `Contacto de prueba ${String(index + 1).padStart(2, "0")}`,
-              source: "WhatsApp",
+              source: index === 8 ? "" : "WhatsApp",
               phone: "+57 300 000 0000",
             },
           }),
@@ -467,6 +467,29 @@ test(
         name: "Nuevo lead",
         exact: true,
       });
+      const existingCard = newColumn
+        .locator(".lead-card")
+        .filter({ hasText: "Contacto de prueba 09" });
+      await existingCard
+        .getByRole("combobox", {
+          name: "Canal de origen de Contacto de prueba 09",
+          exact: true,
+        })
+        .selectOption("WhatsApp");
+      await existingCard
+        .locator('img.source-logo[src="/icons/whatsapp.svg"]')
+        .waitFor();
+      await page.reload();
+      await existingCard
+        .locator('img.source-logo[src="/icons/whatsapp.svg"]')
+        .waitFor();
+      assert.equal(await existingCard.locator(".missing-source").count(), 0);
+      assert.equal(
+        await existingCard
+          .locator("img.source-logo")
+          .evaluate((image) => (image as HTMLImageElement).naturalWidth > 0),
+        true,
+      );
       assert.equal(
         await newColumn.locator(".column-count").textContent(),
         "10",
@@ -715,6 +738,47 @@ test(
       await page
         .getByRole("heading", { name: "A quién contactar", exact: true })
         .waitFor();
+      const chooserPromise = page.waitForEvent("filechooser");
+      await page
+        .getByRole("button", { name: "Cambiar logo del negocio", exact: true })
+        .click();
+      const chooser = await chooserPromise;
+      await chooser.setFiles({
+        name: "logo.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      });
+      await page
+        .getByRole("status")
+        .filter({ hasText: "Logo guardado" })
+        .waitFor();
+      const brandImage = page.getByRole("img", {
+        name: "Logo de Almojábanas Huilenses",
+        exact: true,
+      });
+      await brandImage.evaluate((image) =>
+        (image as HTMLImageElement).decode(),
+      );
+      assert.equal(await page.locator(".profile-logo").count(), 1);
+      assert.match(
+        (await page.locator('link[rel="icon"]').getAttribute("href")) || "",
+        /^\/api\/branding\/logo\?v=/,
+      );
+      await page.reload();
+      await brandImage.waitFor();
+      await brandImage.evaluate((image) =>
+        (image as HTMLImageElement).decode(),
+      );
+      assert.equal(
+        await brandImage.evaluate(
+          (image) => (image as HTMLImageElement).naturalWidth,
+        ),
+        1,
+      );
+      await audit("logo guardado");
       assert.deepEqual(errors, []);
     } finally {
       await browser?.close();
