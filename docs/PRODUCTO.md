@@ -53,7 +53,7 @@ Antes de afirmar una mejora de resultados deben medirse los contactos por campa�
 
 ## Trazabilidad del Kanban y atención manual
 
-Cada tarjeta puede cambiarse de etapa mediante un selector accesible o arrastrándola a otra columna. El servidor conserva cada cambio en el historial y mantiene el responsable, datos de contacto y seguimientos existentes. Las etiquetas siguen siendo configurables.
+La columna indica la etapa de cada tarjeta, sin repetir un selector en su resumen. Puede cambiarse desde la ficha del contacto mediante un selector accesible o arrastrando la tarjeta a otra columna. El servidor conserva cada cambio en el historial y mantiene el responsable, datos de contacto y seguimientos existentes. Las etiquetas siguen siendo configurables.
 
 Desde el detalle del lead se puede abrir WhatsApp con un teléfono que incluya indicativo internacional. Esto no sincroniza conversaciones ni envía mensajes automáticamente. El asesor registra la nota, el resultado y la próxima fecha de seguimiento en el CRM.
 

@@ -30,6 +30,7 @@ import {
   ArrowUpRight,
   CalendarClock,
   Check,
+  CheckCheck,
   ChevronRight,
   CircleHelp,
   Clock3,
@@ -295,7 +296,7 @@ export default function App() {
   async function moveLead(lead: Lead, stage: Stage) {
     if (movingId || lead.stage === stage) return;
     const restoreFocus =
-      document.activeElement?.getAttribute("data-stage-lead") === lead.id;
+      document.activeElement?.getAttribute("data-lead-open") === lead.id;
     setMovingId(lead.id);
     try {
       await api(`/leads/${lead.id}`, {
@@ -309,8 +310,8 @@ export default function App() {
       setMovingId(null);
       if (restoreFocus)
         requestAnimationFrame(() => {
-          const target = document.querySelector<HTMLSelectElement>(
-            `select[data-stage-lead="${lead.id}"]`,
+          const target = document.querySelector<HTMLButtonElement>(
+            `[data-lead-open="${lead.id}"]`,
           );
           if (target) target.focus();
           else
@@ -820,9 +821,8 @@ export default function App() {
                               key={lead.id}
                               lead={lead}
                               clock={clock}
-                              labels={settings.stageLabels}
                               moving={Boolean(movingId)}
-                              onMove={(stage) => void moveLead(lead, stage)}
+                              reviewed={!unreviewed.has(lead.id)}
                               onClick={() => setSelected(lead.id)}
                             />
                           ))}
@@ -870,9 +870,7 @@ export default function App() {
                           <LeadCard
                             lead={lead}
                             clock={clock}
-                            labels={settings.stageLabels}
                             moving={Boolean(movingId)}
-                            onMove={(stage) => void moveLead(lead, stage)}
                             onClick={() => setSelected(lead.id)}
                           />
                           <p className="lost-reason">
@@ -1103,15 +1101,13 @@ function LeadCard({
   lead,
   clock,
   onClick,
-  labels,
   moving,
-  onMove,
+  reviewed,
 }: {
   lead: Lead;
   clock: number;
-  labels: Record<Stage, string>;
   moving: boolean;
-  onMove: (stage: Stage) => void;
+  reviewed?: boolean;
   onClick: () => void;
 }) {
   const late =
@@ -1132,6 +1128,13 @@ function LeadCard({
         data-lead-open={lead.id}
         onClick={onClick}
         aria-label={`Ver detalle de ${lead.name}`}
+        aria-description={
+          reviewed === undefined
+            ? undefined
+            : reviewed
+              ? "Revisado en CRM"
+              : "Sin revisar en CRM"
+        }
       >
         <div className="card-identity">
           <span className="lead-avatar">
@@ -1152,7 +1155,23 @@ function LeadCard({
               {lead.phone && <span title={lead.phone}>{lead.phone}</span>}
             </div>
           </div>
-          <ArrowUpRight size={15} />
+          <span className="card-actions">
+            {reviewed !== undefined && (
+              <span
+                className={`card-review ${reviewed ? "reviewed" : "unreviewed"}`}
+                role="img"
+                aria-label={reviewed ? "Revisado en CRM" : "Sin revisar en CRM"}
+                title={reviewed ? "Revisado en CRM" : "Sin revisar en CRM"}
+              >
+                {reviewed ? (
+                  <CheckCheck size={15} aria-hidden="true" />
+                ) : (
+                  <span className="review-dot" />
+                )}
+              </span>
+            )}
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </span>
         </div>
         {lead.nextContactAt && canFollowUp(lead.stage) && (
           <div
@@ -1174,32 +1193,13 @@ function LeadCard({
             Valor est. {currency(lead.value)}
           </span>
         )}
-      </button>
-      <div className="card-footer">
         {lead.owner && (
           <span className="card-owner" title={lead.owner}>
             <Users size={13} />
             <span>{lead.owner}</span>
           </span>
         )}
-        <label className="quick-stage">
-          <span className="sr-only">Etapa</span>
-          <select
-            aria-label={`Etapa de ${lead.name}`}
-            data-stage-lead={lead.id}
-            title={labels[lead.stage]}
-            value={lead.stage}
-            disabled={moving}
-            onChange={(e) => onMove(e.target.value as Stage)}
-          >
-            {stages.map((stage) => (
-              <option key={stage} value={stage}>
-                {labels[stage]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      </button>
     </article>
   );
 }

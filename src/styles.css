@@ -173,6 +173,27 @@ small {
 .brand-logo-edit:hover {
   background: #edf4ff;
 }
+.brand-name {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 12px;
+  color: #172c50;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.3px;
+}
+.brand-name b {
+  color: #0955ad;
+}
+.brand-tagline {
+  margin: 7px 0 0;
+  color: #96400f;
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+}
 .brand-feedback {
   padding: 0 8px;
   margin: 10px 0 0;
@@ -805,10 +826,28 @@ textarea::placeholder {
   align-items: flex-start;
   gap: 9px;
 }
-.card-identity > svg {
+.card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
   color: #53647e;
   margin-left: auto;
   margin-top: 4px;
+}
+.card-review {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #53647e;
+}
+.review-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #0955ad;
 }
 .lead-avatar {
   position: relative;
@@ -916,12 +955,6 @@ textarea::placeholder {
   margin-top: 5px;
   color: #455b7b;
 }
-.card-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
 .card-owner {
   display: flex;
   align-items: center;
@@ -929,36 +962,12 @@ textarea::placeholder {
   color: #53647e;
   font-size: 11px;
   min-width: 0;
-  flex: 1;
+  margin-top: 8px;
 }
 .card-owner > span {
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-}
-.quick-stage {
-  position: relative;
-  display: block;
-  margin-left: auto;
-  min-width: 0;
-  width: 62%;
-  max-width: 185px;
-}
-.quick-stage:only-child {
-  width: 100%;
-  max-width: none;
-}
-.quick-stage select {
-  min-width: 0;
-  width: 100%;
-  font-size: 11px;
-  min-height: 30px;
-  padding: 4px 5px;
-  background: #f8faff;
-  border: 1px solid #d8e1ef;
-  border-radius: 5px;
-  color: #294b7a;
-  text-overflow: ellipsis;
 }
 .board-no-results {
   padding: 12px;

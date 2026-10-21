@@ -143,6 +143,13 @@ export default function BrandIdentity({
           onChange={(event) => void upload(event)}
         />
       </div>
+      <div className="brand-name">
+        <span>Almojábanas</span>
+        <span>
+          Huilenses <b>MJ</b>
+        </span>
+      </div>
+      <p className="brand-tagline">“Las Originales”</p>
       {error && (
         <p className="brand-feedback brand-error" role="alert">
           {error}

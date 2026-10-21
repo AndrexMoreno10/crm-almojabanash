@@ -9,10 +9,10 @@ Fecha: 21 de octubre de 2026. Alcance: navegación, resumen, Kanban de ocho etap
 | Paleta verde y beige ajena a la marca solicitada | Azul `#0955ad`, naranja `#f57a24`, blanco y superficies claras; azul para acciones principales, naranja para acentos con texto oscuro.          |
 | Texto pequeño, poco contraste y jerarquía débil  | Manrope local, tamaños mayores, títulos operativos y estados de carga o error sin presentar ceros como datos reales.                            |
 | Resumen sin una prioridad clara                  | Indicadores separados de agenda, seguimientos vencidos, distribución real por etapa y contactos recientes.                                      |
-| Ocho columnas difíciles de descubrir             | Desplazamiento visible, botones anterior/siguiente, numeración y criterios de cada etapa. Se conserva el selector como alternativa al arrastre. |
+| Ocho columnas difíciles de descubrir             | Desplazamiento visible, botones anterior/siguiente, numeración y criterios de cada etapa. La ficha conserva el cambio de etapa como alternativa accesible al arrastre. |
 | Ficha sobrecargada                               | Panel lateral con pestañas Información, Actividad y Conversación; acceso manual a WhatsApp e historial conservados.                             |
 | Navegación móvil mediante iconos sin etiquetas   | Menú desplegable con nombres completos, control del foco y cierre por Escape.                                                                   |
-| Riesgo de perder el foco al mover o cerrar       | Retorno al selector del contacto tras mover y al menú móvil cuando el botón original ya no está disponible.                                     |
+| Riesgo de perder el foco al mover o cerrar       | Retorno a la tarjeta del contacto tras mover y al menú móvil cuando el botón original ya no está disponible.                                     |
 | Simulador editable durante un envío pendiente    | Controles bloqueados durante la petición y desplazamiento al último mensaje.                                                                    |
 | Exportación no ajustada a la vista de perdidas   | El CSV respeta el conjunto visible, además de sus filtros.                                                                                      |
 
@@ -22,7 +22,7 @@ Los tonos son una interpretación de los tres colores indicados por el usuario; 
 
 Se retiraron del encabezado visible la marca repetida, el segundo título y las explicaciones extensas. El tablero ocupa el espacio disponible en la ventana, con desplazamiento vertical independiente en cada etapa. En ventanas muy bajas se permite desplazar la página para mantener accesibles los controles.
 
-Las columnas pasan de 248 a 300 píxeles mínimos en escritorio. Las tarjetas muestran nombre (hasta dos líneas), canal y teléfono disponibles, seguimiento programado y responsable asignado; el valor estimado solo aparece si es mayor que cero. El selector de etapa se conserva en una fila compacta y el clic abre la ficha completa. Se eliminan los textos de ausencia de campaña o responsable. La información sigue almacenada aunque no aparezca en el resumen.
+Las columnas pasan de 248 a 300 píxeles mínimos en escritorio. Las tarjetas muestran nombre (hasta dos líneas), canal y teléfono disponibles, seguimiento programado y responsable asignado; el valor estimado solo aparece si es mayor que cero. Se retiró el selector de etapa de la tarjeta porque la columna ya muestra ese estado. El clic abre la ficha, donde se mantiene el selector como alternativa al arrastre. Se eliminan los textos de ausencia de campaña o responsable. La información sigue almacenada aunque no aparezca en el resumen.
 
 ## Validación
 
@@ -50,4 +50,6 @@ Los iconos sociales se muestran como una insignia pequeña en la esquina de las 
 
 La cámara del sidebar permite cargar el logo original desde el equipo del usuario. El navegador comprueba que pueda leer la imagen y sus dimensiones; la API limita tamaño y tipos raster, valida su firma y conserva los bytes en SQLite. La imagen actualiza sidebar y favicon sin build. La prueba de navegador comprueba las insignias de los canales, carga una imagen de prueba y comprueba ambos resultados tras recargar. Las pruebas de API comprueban persistencia al reiniciar, conservación de leads y notas y rechazo de cargas inválidas.
 
-El sidebar usa un logo centrado de 128 × 128 píxeles con ajuste proporcional. Se retiraron el texto de marca a su lado, la tarjeta de sede y el bloque grande de pendientes. El indicador de seguimientos vencidos continúa en el acceso de navegación. La configuración y la ubicación quedan en un pie breve. El logo abre Resumen y la cámara mantiene la carga independiente; la imagen ya guardada se conserva.
+El sidebar usa un logo centrado de 128 × 128 píxeles con ajuste proporcional. El nombre «Almojábanas Huilenses MJ» aparece centrado debajo del logo en dos líneas, seguido por «Las Originales» como lema. Se retiraron la tarjeta de sede y el bloque grande de pendientes. El indicador de seguimientos vencidos continúa en el acceso de navegación. La configuración y la ubicación quedan en un pie breve. El logo abre Resumen y la cámara mantiene la carga independiente; la imagen ya guardada se conserva.
+
+Las tarjetas marcan con un punto azul los leads sin revisar en CRM y con un doble chulo gris los revisados. Abrir la ficha actualiza el indicador mediante la revisión persistente existente; un mensaje entrante nuevo vuelve a dejar pendiente la revisión. Estos indicadores no representan confirmaciones de lectura de WhatsApp.

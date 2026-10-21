@@ -80,6 +80,33 @@ test(
           `Accesibilidad: ${name}`,
         );
       };
+      const changeHotelStage = async (stage: string) => {
+        await page
+          .getByRole("button", {
+            name: "Ver detalle de Hotel de prueba",
+            exact: true,
+          })
+          .click();
+        await page.getByLabel("Etapa", { exact: true }).selectOption(stage);
+        const saved = page.waitForResponse(
+          (response) =>
+            response.url().endsWith("/api/leads") &&
+            response.request().method() === "GET",
+        );
+        await page
+          .getByRole("button", { name: "Guardar cambios", exact: true })
+          .click();
+        assert.equal((await saved).status(), 200);
+        await page.waitForFunction(() =>
+          Array.from(document.querySelectorAll("button")).some(
+            (button) =>
+              button.textContent?.trim() === "Guardar cambios" &&
+              !button.disabled,
+          ),
+        );
+        await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+        await page.getByRole("dialog").waitFor({ state: "hidden" });
+      };
       await page.goto("http://127.0.0.1:3101");
       await page
         .getByRole("heading", {
@@ -146,27 +173,40 @@ test(
         .getByRole("button", { name: "Crear oportunidad", exact: true })
         .click();
       await page.getByRole("dialog").waitFor({ state: "hidden" });
+      assert.equal(await page.locator(".lead-card select").count(), 0);
       await page
-        .getByRole("combobox", {
-          name: "Etapa de Hotel de prueba",
-          exact: true,
-        })
-        .focus();
+        .getByRole("img", { name: "Sin revisar en CRM", exact: true })
+        .waitFor();
+      const openHotel = page.getByRole("button", {
+        name: "Ver detalle de Hotel de prueba",
+        exact: true,
+      });
+      await openHotel.focus();
+      const reviewed = page.waitForResponse(
+        (response) =>
+          response.url().endsWith("/review") &&
+          response.request().method() === "POST",
+      );
+      await openHotel.press("Enter");
+      assert.equal((await reviewed).status(), 200);
+      await page.getByRole("button", { name: "Cerrar", exact: true }).click();
       await page
-        .getByRole("combobox", {
-          name: "Etapa de Hotel de prueba",
-          exact: true,
-        })
-        .selectOption("conversation");
+        .getByRole("region", { name: "Nuevo lead", exact: true })
+        .getByRole("img", { name: "Revisado en CRM", exact: true })
+        .waitFor();
+      await page.reload();
+      await page
+        .getByRole("region", { name: "Nuevo lead", exact: true })
+        .getByRole("img", { name: "Revisado en CRM", exact: true })
+        .waitFor();
+      await changeHotelStage("conversation");
       await page
         .getByRole("region", { name: "En atención", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
         .waitFor();
-      await page.waitForFunction(
-        () =>
-          document.activeElement?.getAttribute("aria-label") ===
-          "Etapa de Hotel de prueba",
-      );
+      await page
+        .getByRole("img", { name: "Revisado en CRM", exact: true })
+        .waitFor();
       const alerts = await page.getByRole("alert").allTextContents();
       assert.deepEqual(alerts, []);
       await page
@@ -226,12 +266,7 @@ test(
         .getByRole("region", { name: "Nuevo lead", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
         .waitFor();
-      await page
-        .getByRole("combobox", {
-          name: "Etapa de Hotel de prueba",
-          exact: true,
-        })
-        .selectOption("conversation");
+      await changeHotelStage("conversation");
       await page
         .getByRole("region", { name: "En atención", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
@@ -261,12 +296,7 @@ test(
         ).length,
         4,
       );
-      const stageSelect = () =>
-        page.getByRole("combobox", {
-          name: "Etapa de Hotel de prueba",
-          exact: true,
-        });
-      await stageSelect().selectOption("lost");
+      await changeHotelStage("lost");
       await page
         .getByRole("button", {
           name: "Ver oportunidades perdidas",
@@ -277,7 +307,7 @@ test(
         .getByRole("region", { name: "Oportunidades perdidas", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
         .waitFor();
-      await stageSelect().selectOption("interested");
+      await changeHotelStage("interested");
       await page
         .getByRole("heading", {
           name: "Sin oportunidades perdidas",
@@ -292,7 +322,7 @@ test(
         ["closing", "Pedido en cierre"],
         ["won", "Primera compra realizada"],
       ]) {
-        await stageSelect().selectOption(stage);
+        await changeHotelStage(stage);
         await page
           .getByRole("region", { name: label, exact: true })
           .getByRole("heading", { name: "Hotel de prueba", exact: true })
@@ -330,7 +360,7 @@ test(
       await page
         .getByRole("button", { name: "Embudo de ventas", exact: true })
         .click();
-      await stageSelect().selectOption("recurring");
+      await changeHotelStage("recurring");
       await page
         .getByRole("region", { name: "Cliente recurrente", exact: true })
         .getByRole("heading", { name: "Hotel de prueba", exact: true })
