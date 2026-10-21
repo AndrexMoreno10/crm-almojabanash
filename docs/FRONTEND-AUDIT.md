@@ -39,3 +39,7 @@ Las comprobaciones automáticas ayudan a detectar errores; no equivalen a una ce
 `npm run dev` actualiza al guardar. `npm run dev:sync` consulta GitHub cada veinte segundos y solo avanza una copia limpia de main; conserva modificaciones, commits y archivos ignorados ante colisiones. Prepara dependencias únicamente cuando cambia su huella. Si cambia el código del propio iniciador, debe reiniciarse su ventana.
 
 El workflow de GitHub valida compilación y pruebas en cada push a main o pull request. No publica un servidor: el proveedor y el destino de despliegue aún no se han definido.
+
+## Inicio simplificado para la gestión comercial
+
+El Resumen se sustituyó por una sola lista con tres pestañas: Por atender, Seguimientos y Por cerrar. Los leads vencidos aparecen primero en seguimientos y las conversaciones sin próxima fecha también se incluyen. Cada fila abre su ficha y permite identificar el siguiente paso; la lista completa conserva el mismo filtro. Se retiraron las tarjetas grandes, el gráfico, el valor estimado, los contactos recientes y la tarjeta lateral de agenda del inicio. Los resultados de primera compra y recurrencia quedan en una línea breve. Se conserva Sin revisar en CRM como acceso secundario. No se incorpora inventario. Los criterios completos están en DASHBOARD.md.

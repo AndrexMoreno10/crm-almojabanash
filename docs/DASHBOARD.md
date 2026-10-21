@@ -1,28 +1,23 @@
-# Qué prioriza el Resumen
+# Inicio orientado a ventas
 
-El panel separa trabajo pendiente de resultados comerciales. Los contadores usan datos guardados y los accesos de atención abren la lista filtrada correspondiente.
+El Resumen responde una pregunta: **¿a quién debemos contactar ahora?** Tiene una sola lista, organizada en tres vistas. Muestra hasta seis leads y permite abrir la lista completa o el detalle de cada contacto.
 
-| Indicador | Criterio y acción |
-| --- | --- |
-| Sin revisar en CRM | Todavía no se ha registrado la apertura de la ficha, o hay un mensaje entrante posterior a la última revisión. Abre los leads pendientes de revisar. No representa el estado de lectura de WhatsApp. |
-| Primera atención pendiente | Lead en Nuevo lead. Abrir su ficha no lo quita de este grupo; el equipo registra la atención al cambiar su etapa. |
-| Sin responsable | Oportunidades anteriores a primera compra sin una persona asignada. Asigna quién debe atenderlas. |
-| Sin próximo contacto | Oportunidades anteriores a primera compra sin fecha de seguimiento. Define cuándo volver a contactar. |
-| Seguimientos vencidos | Fecha del próximo contacto anterior al momento actual; excluye perdidas e incluye clientes que ya compraron. Abre la agenda. |
-| Oportunidades abiertas | Etapas desde Nuevo lead hasta Pedido en cierre. |
-| Tasa de cierre | Leads en Primera compra o Cliente recurrente / leads en esas dos etapas o perdidos. Es el porcentaje sobre cierres registrados, no la conversión de una campaña o período. |
-| Primera compra | Leads actualmente clasificados en Primera compra realizada. |
-| Clientes recurrentes | Leads actualmente clasificados en Cliente recurrente; no se duplican en la tasa de cierre. |
+Al entrar elige una vista con trabajo: primero Por atender, después seguimientos vencidos, oportunidades en cierre y el resto de seguimientos. Si el usuario cambia de pestaña, conserva esa elección mientras permanezca en el inicio.
 
-Los grupos de atención pueden compartir leads; no deben sumarse como si fueran personas distintas. La distribución por ocho etapas permite localizar oportunidades en muestra o cierre. Las condiciones y cantidades de muestras siguen sin aprobarse.
+| Vista        | Qué incluye                                                                                                                                                     | Orden                                                |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Por atender  | Leads en Nuevo lead y fichas sin revisar en el CRM, salvo perdidas. Un mismo lead aparece una sola vez.                                                         | Primero los que llegaron antes.                      |
+| Seguimientos | Contactos con fecha programada, incluidos compradores existentes; también conversaciones abiertas posteriores a Nuevo lead que todavía no tienen próxima fecha. | Vencidos, programados para hoy, sin fecha y futuros. |
+| Por cerrar   | Leads clasificados en Pedido en cierre.                                                                                                                         | Prioridad a los seguimientos vencidos o para hoy.    |
 
-La revisión se guarda en `lead_reviews`, aparte de las etapas, notas y fechas comerciales. Los contactos anteriores a esta función aparecen pendientes de revisar porque no existe una revisión registrada; no se infiere su atención histórica. Un mensaje nuevo vuelve a marcar la ficha como pendiente mediante su identificador, incluso si comparte timestamp con otro. Un borrador no cuenta como mensaje recibido ni como respuesta enviada.
+Cada fila muestra nombre, canal, etapa y siguiente gestión, con su fecha cuando existe. Abrir la ficha permite responder manualmente por WhatsApp, registrar el resultado y programar la próxima fecha. Las gestiones sugeridas no envían mensajes ni confirman pedidos automáticamente.
 
-## Métricas siguientes, cuando existan los datos
+El acceso **Sin revisar en CRM** conserva la lista de fichas pendientes. Abrir una ficha registra su revisión; no confirma una respuesta al cliente ni cambia la etapa. Los mensajes nuevos recibidos vuelven a requerir revisión, incluso con el mismo timestamp. Un borrador no cuenta como mensaje enviado. Esto no representa recibos de lectura de WhatsApp; Meta sigue sin conectar.
 
-- Tiempo hasta la primera respuesta y mensajes pendientes de respuesta reales, después de conectar y verificar Meta.
-- Conversión por campaña y por fecha de entrada, con atribución y cohortes reales.
-- Muestras aprobadas, entregadas y convertidas en primera compra, después de acordar y registrar esos hitos.
-- Volumen, frecuencia y valor de compras recurrentes cuando exista registro de pedidos.
+Los leads anteriores a esta función aparecen sin revisar cuando no existe registro de apertura. La revisión se conserva en `lead_reviews`, separada de etapas, notas y fechas comerciales.
 
-No se muestran ventas, ingresos, retorno publicitario ni tiempos de respuesta estimados a partir de datos que el CRM aún no captura.
+## Resultados en segundo plano
+
+Una línea breve muestra los leads actualmente en Primera compra y Cliente recurrente. No se suman como si fueran pedidos ni se muestran ingresos estimados. Se retiraron las tarjetas grandes de indicadores, la tasa de cierre, el valor estimado, el gráfico de distribución y la tabla de contactos recientes del inicio. Las ocho etapas y los contactos completos siguen disponibles en el embudo y las fichas.
+
+Inventario queda fuera de esta versión. Los precios y condiciones de muestras siguen pendientes de aprobación.

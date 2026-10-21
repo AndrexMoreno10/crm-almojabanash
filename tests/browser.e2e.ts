@@ -294,12 +294,32 @@ test(
           .getByRole("region", { name: label, exact: true })
           .getByRole("heading", { name: "Hotel de prueba", exact: true })
           .waitFor();
+        if (stage === "closing") {
+          await page
+            .getByRole("button", { name: "Resumen", exact: true })
+            .click();
+          await page.getByRole("tab", { name: /^Por cerrar/ }).click();
+          await page
+            .getByRole("button", {
+              name: "Ver detalle de Hotel de prueba",
+              exact: true,
+            })
+            .waitFor();
+          await page
+            .getByRole("button", { name: "Ver todos", exact: true })
+            .click();
+          assert.match(page.url(), /attention=closing/);
+          assert.equal(await page.locator(".table-wrap tbody tr").count(), 1);
+          await page
+            .getByRole("button", { name: "Embudo de ventas", exact: true })
+            .click();
+        }
       }
       await page.getByRole("button", { name: "Resumen", exact: true }).click();
       assert.equal(
         await page
-          .locator("article.metric")
-          .filter({ hasText: "Clientes en la etapa de primera compra" })
+          .locator(".sales-results > span")
+          .filter({ hasText: "Primera compra" })
           .locator("strong")
           .innerText(),
         "1",
@@ -320,36 +340,40 @@ test(
       await page.getByRole("button", { name: "Resumen", exact: true }).click();
       assert.equal(
         await page
-          .locator("article.metric")
-          .filter({ hasText: "Clientes en la etapa de primera compra" })
+          .locator(".sales-results > span")
+          .filter({ hasText: "Primera compra" })
           .locator("strong")
           .innerText(),
         "0",
       );
       assert.equal(
         await page
-          .locator("article.metric")
-          .filter({ hasText: "Clasificados como compradores recurrentes" })
+          .locator(".sales-results > span")
+          .filter({ hasText: "Recurrentes" })
           .locator("strong")
           .innerText(),
         "1",
       );
       assert.equal(
         await page
-          .locator("article.metric")
-          .filter({ hasText: "Oportunidades abiertas" })
-          .locator("strong")
-          .innerText(),
-        "0",
+          .locator(".metrics, .funnel-breakdown, .recent-panel")
+          .count(),
+        0,
       );
       assert.equal(
         await page
-          .locator("article.metric")
-          .filter({ hasText: "Tasa de cierre" })
-          .locator("strong")
-          .innerText(),
-        "100%",
+          .getByRole("tab", { name: /^Seguimientos/ })
+          .getAttribute("aria-selected"),
+        "true",
       );
+      await page.getByRole("tab", { name: /^Seguimientos/ }).click();
+      await page
+        .getByRole("button", {
+          name: "Ver detalle de Hotel de prueba",
+          exact: true,
+        })
+        .waitFor();
+      await page.getByText("Retomar seguimiento", { exact: true }).waitFor();
       await audit("resumen con oportunidades");
       await page.screenshot({
         path: "/tmp/almo-crm-overview.png",
@@ -357,7 +381,7 @@ test(
       });
 
       await page
-        .getByRole("region", { name: /Seguimientos por atender/ })
+        .getByRole("region", { name: "A quién contactar", exact: true })
         .getByRole("button")
         .filter({ hasText: "Hotel de prueba" })
         .click();
@@ -532,8 +556,18 @@ test(
       assert.equal(await page.locator(".table-wrap tbody tr").count(), 8);
       await page.getByRole("button", { name: "Resumen", exact: true }).click();
       assert.equal(await reviewAction().locator("strong").textContent(), "8");
+      await page.getByRole("tab", { name: /^Por atender/ }).focus();
+      await page.keyboard.press("ArrowRight");
+      assert.equal(
+        await page
+          .getByRole("tab", { name: /^Seguimientos/ })
+          .getAttribute("aria-selected"),
+        "true",
+      );
+      await page.keyboard.press("ArrowLeft");
+      await page.getByRole("tab", { name: /^Por atender/ }).click();
       await page
-        .getByRole("button", { name: /^Primera atención pendiente/ })
+        .getByRole("button", { name: "Ver todos", exact: true })
         .click();
       assert.equal(
         await page.locator(".table-wrap tbody tr").count(),
@@ -643,8 +677,10 @@ test(
         .getByRole("button", { name: "Nueva oportunidad", exact: true })
         .click();
       await page.keyboard.press("Escape");
-      await page.waitForFunction(() =>
-        document.activeElement?.textContent?.includes("Nueva oportunidad"),
+      await page.waitForFunction(
+        () =>
+          document.activeElement ===
+          document.querySelector(".page-heading > .primary"),
       );
       assert.equal(
         await page
@@ -670,17 +706,14 @@ test(
           exact: true,
         })
         .waitFor();
-      assert.ok(
-        (await page.locator("article.metric > strong").allTextContents()).every(
-          (value) => value === "—",
-        ),
-      );
+      assert.equal(await page.locator(".sales-lead").count(), 0);
+      assert.equal(await page.locator(".sales-results").count(), 0);
       await page.unroute("**/api/leads");
       await page
         .getByRole("button", { name: "Actualizar", exact: true })
         .click();
       await page
-        .getByRole("heading", { name: "Distribución del embudo", exact: true })
+        .getByRole("heading", { name: "A quién contactar", exact: true })
         .waitFor();
       assert.deepEqual(errors, []);
     } finally {

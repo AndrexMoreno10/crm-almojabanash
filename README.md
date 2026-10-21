@@ -4,14 +4,14 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 
 ## Lo que funciona
 
-- Secciones independientes de **Resumen** y **Embudo de ventas** en el sidebar. El resumen reúne indicadores, seguimientos y oportunidades recientes; el embudo conserva el Kanban.
+- Secciones independientes de **Resumen** y **Embudo de ventas** en el sidebar. El resumen muestra una única lista para atender, hacer seguimiento y cerrar; el embudo conserva el Kanban.
 - Interfaz en azul, naranja y blanco, tipografía Manrope alojada en el proyecto, navegación móvil con etiquetas y fichas divididas en información, actividad y conversación.
 - Tablero Kanban con ocho etapas comerciales configurables: nuevo lead, atención, información enviada, interés confirmado, muestra, cierre del pedido, primera compra y recurrencia. Cada movimiento queda en el historial. Las oportunidades perdidas se consultan aparte y se pueden recuperar.
 - Embudo con encabezado compacto, tarjetas más anchas y resumidas y desplazamiento independiente en cada etapa. Los campos vacíos y valores en cero se omiten en la tarjeta; la ficha conserva toda la información.
 - Apertura de WhatsApp para atención manual de contactos con indicativo internacional; sin sincronización automática.
 - Registro de contacto, canal, campaña, responsable y valor estimado opcional, sin moneda asumida.
 - Notas e historial, agenda de seguimiento, búsqueda y exportación CSV.
-- Resumen con accesos a leads sin revisar en CRM, primera atención pendiente, sin responsable y sin próximo contacto. Revisar una ficha se registra por separado de responder o avanzar de etapa.
+- Inicio con tres vistas: Por atender, Seguimientos y Por cerrar, con acceso al detalle y a la lista completa. Se conserva el acceso a fichas sin revisar en CRM; revisar no significa responder o avanzar de etapa.
 - Persistencia local con SQLite; las pruebas usan bases temporales separadas.
 - Simulador de un asistente guiado: permiso de seguimiento, tipo de comprador, cantidad, ciudad, nombre e interés en una muestra.
 - Pausa ante preguntas que requieren información comercial o un asesor. `SALIR` detiene el seguimiento automático.

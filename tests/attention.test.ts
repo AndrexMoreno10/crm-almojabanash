@@ -78,6 +78,29 @@ test("CRM reviews persist without marking a lead answered, changing its commerci
     const updated = (await request(instance.app).get(`/api/leads/${lead.id}`))
       .body.lead;
     assert.equal(matchesAttention(updated, "new", new Set()), false);
+    assert.equal(matchesAttention(lead, "pending", new Set()), true);
+    assert.equal(matchesAttention(updated, "pending", new Set()), false);
+    assert.equal(
+      matchesAttention(updated, "pending", new Set([updated.id])),
+      true,
+    );
+    assert.equal(
+      matchesAttention(updated, "followups", new Set()),
+      true,
+      "An attended lead without a next date still requires follow-up",
+    );
+    assert.equal(matchesAttention(recurring, "followups", new Set()), false);
+    const scheduled = (
+      await request(instance.app)
+        .patch(`/api/leads/${recurring.id}`)
+        .send({ nextContactAt: "2026-12-01T10:00:00.000Z" })
+        .expect(200)
+    ).body;
+    assert.equal(
+      matchesAttention(scheduled, "followups", new Set()),
+      true,
+      "A scheduled existing customer remains visible for follow-up",
+    );
   } finally {
     instance.close();
     rmSync(directory, { recursive: true, force: true });

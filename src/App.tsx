@@ -1,6 +1,5 @@
 import Overview from "./Overview";
 import SourceLabel from "./SourceLabel";
-import AttentionPanel from "./AttentionPanel";
 import {
   attentionLabels,
   matchesAttention,
@@ -41,8 +40,6 @@ import {
   Plus,
   Search,
   Settings2,
-  Target,
-  TrendingUp,
   Users,
   X,
 } from "lucide-react";
@@ -52,7 +49,6 @@ import {
   stages,
   pipelineStages,
   stageHints,
-  isConvertedStage,
   isOpenStage,
   canFollowUp,
   type Activity,
@@ -270,9 +266,7 @@ export default function App() {
       (!source || l.source === source),
   );
   const open = leads.filter(active);
-  const won = leads.filter((l) => isConvertedStage(l.stage));
   const lost = filtered.filter((l) => l.stage === "lost");
-  const closed = leads.filter((l) => !active(l));
   const overdue = leads.filter(
     (l) =>
       canFollowUp(l.stage) &&
@@ -378,7 +372,7 @@ export default function App() {
   }
   return (
     <div
-      className={`app-shell ${menuOpen ? "nav-open" : ""} ${view === "pipeline" ? "pipeline-workspace" : ""}`}
+      className={`app-shell ${menuOpen ? "nav-open" : ""} ${view === "pipeline" ? "pipeline-workspace" : view === "overview" ? "overview-page" : ""}`}
     >
       <a
         className="skip-link"
@@ -484,20 +478,22 @@ export default function App() {
             Asistente de ventas
           </NavButton>
         </nav>
-        <div className="sidebar-focus">
-          <span className="sidebar-focus-icon">
-            <CalendarClock size={21} />
-          </span>
-          <strong>{overdue.length} pendientes</strong>
-          <p>
-            {overdue.length
-              ? "Seguimientos con fecha vencida."
-              : "Sin seguimientos vencidos."}
-          </p>
-          <button onClick={() => navigate("followups")}>
-            Abrir agenda <ArrowRight size={16} />
-          </button>
-        </div>
+        {view !== "overview" && (
+          <div className="sidebar-focus">
+            <span className="sidebar-focus-icon">
+              <CalendarClock size={21} />
+            </span>
+            <strong>{overdue.length} pendientes</strong>
+            <p>
+              {overdue.length
+                ? "Seguimientos con fecha vencida."
+                : "Sin seguimientos vencidos."}
+            </p>
+            <button onClick={() => navigate("followups")}>
+              Abrir agenda <ArrowRight size={16} />
+            </button>
+          </div>
+        )}
         <div className="sidebar-bottom">
           <button
             aria-label="Configurar etapas"
@@ -555,7 +551,7 @@ export default function App() {
         <div className="page-content">
           <div className="page-heading">
             <div>
-              {view !== "pipeline" && (
+              {view !== "pipeline" && view !== "overview" && (
                 <div className="eyebrow">
                   ALMOJÁBANAS HUILENSES <span>/ COMERCIAL</span>
                 </div>
@@ -586,7 +582,7 @@ export default function App() {
               {view !== "pipeline" && (
                 <p>
                   {view === "overview"
-                    ? "Oportunidades, próximos contactos y resultados de tu equipo."
+                    ? "Responde, retoma y concreta el próximo pedido."
                     : view === "followups"
                       ? "Retoma las conversaciones pendientes y mantén el ritmo de tu equipo."
                       : view === "assistant"
@@ -611,91 +607,6 @@ export default function App() {
               <button onClick={() => void load()}>Reintentar</button>
             </div>
           )}
-          {view === "overview" && (
-            <AttentionPanel
-              leads={leads}
-              unreviewed={unreviewed}
-              loading={loading}
-              unavailable={Boolean(error)}
-              onFilter={openAttention}
-            />
-          )}
-          {view === "overview" && (
-            <section className="metrics" aria-label="Resumen comercial">
-              <Metric
-                status={
-                  loading
-                    ? "Cargando datos…"
-                    : error
-                      ? "No disponible"
-                      : undefined
-                }
-                label="Oportunidades abiertas"
-                value={loading || error ? "—" : String(open.length)}
-                icon={<Users size={19} />}
-                foot="Leads activos antes de la primera compra"
-              />
-              <Metric
-                status={
-                  loading
-                    ? "Cargando datos…"
-                    : error
-                      ? "No disponible"
-                      : undefined
-                }
-                label="Tasa de cierre"
-                value={
-                  loading || error
-                    ? "—"
-                    : closed.length
-                      ? `${Math.round((won.length / closed.length) * 100)}%`
-                      : "—"
-                }
-                icon={<Target size={19} />}
-                foot={
-                  closed.length
-                    ? `${won.length} ganadas de ${closed.length} cerradas`
-                    : "Aún no hay oportunidades cerradas"
-                }
-              />
-              <Metric
-                status={
-                  loading
-                    ? "Cargando datos…"
-                    : error
-                      ? "No disponible"
-                      : undefined
-                }
-                label="Primera compra"
-                value={
-                  loading || error
-                    ? "—"
-                    : String(leads.filter((l) => l.stage === "won").length)
-                }
-                icon={<Check size={19} />}
-                foot="Clientes en la etapa de primera compra"
-              />
-              <Metric
-                status={
-                  loading
-                    ? "Cargando datos…"
-                    : error
-                      ? "No disponible"
-                      : undefined
-                }
-                label="Clientes recurrentes"
-                value={
-                  loading || error
-                    ? "—"
-                    : String(
-                        leads.filter((l) => l.stage === "recurring").length,
-                      )
-                }
-                icon={<Users size={19} />}
-                foot="Clasificados como compradores recurrentes"
-              />
-            </section>
-          )}
           {view === "overview" ? (
             <Overview
               leads={leads}
@@ -704,8 +615,9 @@ export default function App() {
               loading={loading}
               now={clock}
               onOpen={setSelected}
+              unreviewed={unreviewed}
+              onFilter={openAttention}
               onPipeline={() => navigate("pipeline")}
-              onFollowups={() => navigate("followups")}
             />
           ) : view === "assistant" ? (
             <Assistant status={metaStatus} />
@@ -1201,32 +1113,6 @@ function NavButton({
       {icon}
       <span>{children}</span>
     </button>
-  );
-}
-function Metric({
-  label,
-  value,
-  icon,
-  foot,
-  accent,
-  status,
-}: {
-  status?: string;
-  label: string;
-  value: string;
-  icon: ReactNode;
-  foot: string;
-  accent?: boolean;
-}) {
-  return (
-    <article className={`metric ${accent ? "metric-accent" : ""}`}>
-      <div className="metric-label">
-        {label}
-        <span>{icon}</span>
-      </div>
-      <strong>{value}</strong>
-      <small>{status || foot}</small>
-    </article>
   );
 }
 function Empty({

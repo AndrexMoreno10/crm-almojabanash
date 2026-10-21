@@ -1,289 +1,303 @@
-import SourceLabel from "./SourceLabel";
+import { useRef, useState, type KeyboardEvent } from "react";
 import {
   ArrowRight,
   CalendarClock,
-  Clock3,
-  LayoutGrid,
-  LoaderCircle,
   Check,
-  Users,
-  TrendingUp,
+  Clock3,
+  LoaderCircle,
+  MessageSquare,
 } from "lucide-react";
-import {
-  canFollowUp,
-  isOpenStage,
-  pipelineStages,
-  type Lead,
-  type Stage,
-} from "../shared/types";
+import SourceLabel from "./SourceLabel";
+import { matchesAttention, type AttentionFilter } from "../shared/attention";
+import { type Lead, type Stage } from "../shared/types";
 interface Props {
   leads: Lead[];
   labels: Record<Stage, string>;
   loading: boolean;
   unavailable: boolean;
+  unreviewed: ReadonlySet<string>;
   now: number;
   onOpen: (id: string) => void;
+  onFilter: (filter: AttentionFilter) => void;
   onPipeline: () => void;
-  onFollowups: () => void;
 }
-const date = (value: string) =>
+const queues = [
+  { key: "pending", label: "Por atender" },
+  { key: "followups", label: "Seguimientos" },
+  { key: "closing", label: "Por cerrar" },
+] as const;
+type Queue = (typeof queues)[number]["key"];
+const formatDate = (value: string) =>
   new Intl.DateTimeFormat("es-CO", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
 export default function Overview({
   leads,
   labels,
   loading,
   unavailable,
+  unreviewed,
   now,
   onOpen,
+  onFilter,
   onPipeline,
-  onFollowups,
 }: Props) {
-  const scheduled = leads
-    .filter((lead) => canFollowUp(lead.stage) && lead.nextContactAt)
-    .sort(
-      (a, b) => Date.parse(a.nextContactAt!) - Date.parse(b.nextContactAt!),
-    );
-  const overdue = scheduled.filter(
-    (lead) => Date.parse(lead.nextContactAt!) < now,
-  );
-  const total = leads.filter((lead) => lead.stage !== "lost").length;
-  const estimated = leads
-    .filter((lead) => isOpenStage(lead.stage))
-    .reduce((sum, lead) => sum + lead.value, 0);
+  const [selectedQueue, setQueue] = useState<Queue | null>(null);
+  const queue =
+    selectedQueue ??
+    (leads.some((lead) => matchesAttention(lead, "pending", unreviewed))
+      ? "pending"
+      : leads.some(
+            (lead) =>
+              matchesAttention(lead, "followups", unreviewed) &&
+              lead.nextContactAt &&
+              Date.parse(lead.nextContactAt) < now,
+          )
+        ? "followups"
+        : leads.some((lead) => lead.stage === "closing")
+          ? "closing"
+          : leads.some((lead) =>
+                matchesAttention(lead, "followups", unreviewed),
+              )
+            ? "followups"
+            : "pending");
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+  const priority = (lead: Lead) => {
+    if (lead.nextContactAt && Date.parse(lead.nextContactAt) < now) return 0;
+    if (
+      lead.nextContactAt &&
+      Date.parse(lead.nextContactAt) <= endOfToday.getTime()
+    )
+      return 1;
+    if (!lead.nextContactAt) return 2;
+    return 3;
+  };
+  const items = leads
+    .filter((lead) => matchesAttention(lead, queue, unreviewed))
+    .sort((a, b) => {
+      if (queue === "pending")
+        return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+      return (
+        priority(a) - priority(b) ||
+        Date.parse(a.nextContactAt || a.createdAt) -
+          Date.parse(b.nextContactAt || b.createdAt)
+      );
+    });
+  function changeTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let next = index;
+    if (event.key === "ArrowRight") next = (index + 1) % queues.length;
+    else if (event.key === "ArrowLeft")
+      next = (index + queues.length - 1) % queues.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = queues.length - 1;
+    else return;
+    event.preventDefault();
+    setQueue(queues[next].key);
+    tabsRef.current
+      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+      [next]?.focus();
+  }
   if (unavailable)
     return (
-      <div className="data-unavailable">
-        <CalendarClock size={28} />
+      <div className="data-unavailable" role="status">
+        <CalendarClock size={26} />
         <h2>No se pudo cargar la operación</h2>
-        <p>Usa Actualizar para volver a consultar tus oportunidades.</p>
+        <p>Usa Actualizar para consultar los leads.</p>
       </div>
     );
   return (
-    <div className="overview-workspace">
-      <div className={`priority-banner ${overdue.length ? "has-pending" : ""}`}>
-        <span className="priority-icon">
-          {overdue.length ? <Clock3 size={23} /> : <Check size={23} />}
-        </span>
-        <div>
-          <strong>
-            {loading
-              ? "Consultando seguimientos…"
-              : overdue.length
-                ? `${overdue.length} seguimiento${overdue.length === 1 ? "" : "s"} vencido${overdue.length === 1 ? "" : "s"}`
-                : "Sin seguimientos vencidos"}
-          </strong>
-          <p>
-            {overdue.length
-              ? "Retoma estos contactos y registra el siguiente paso."
-              : "Programa el próximo contacto desde la ficha de cada oportunidad."}
-          </p>
+    <div className="sales-home">
+      <section className="sales-queue" aria-labelledby="sales-queue-title">
+        <div className="sales-queue-heading">
+          <h2 id="sales-queue-title">A quién contactar</h2>
+          <button
+            className="text-button unread-link"
+            disabled={loading}
+            onClick={() => onFilter("unreviewed")}
+            title="Fichas sin revisar en este CRM; no equivale a una respuesta pendiente de WhatsApp."
+          >
+            Sin revisar en CRM{" "}
+            <strong>
+              {loading
+                ? "—"
+                : leads.filter((lead) =>
+                    matchesAttention(lead, "unreviewed", unreviewed),
+                  ).length}
+            </strong>
+            <ArrowRight size={14} />
+          </button>
         </div>
-        <button className="secondary" onClick={onFollowups}>
-          Abrir agenda <ArrowRight size={16} />
-        </button>
-      </div>
-      <div className="overview-grid">
-        <section
-          className="board-section overview-panel"
-          aria-labelledby="overview-followups-title"
+        <div
+          className="sales-tabs"
+          role="tablist"
+          aria-label="Prioridades comerciales"
+          ref={tabsRef}
         >
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">PRIORIDAD DEL EQUIPO</span>
-              <h2 id="overview-followups-title">
-                Seguimientos por atender{" "}
-                <span>{loading ? "—" : scheduled.length}</span>
-              </h2>
-            </div>
-            <button className="text-button" onClick={onFollowups}>
-              Ver todos <ArrowRight size={16} />
+          {queues.map((item, index) => (
+            <button
+              key={item.key}
+              id={`queue-tab-${item.key}`}
+              role="tab"
+              aria-selected={queue === item.key}
+              aria-controls="sales-queue-panel"
+              tabIndex={queue === item.key ? 0 : -1}
+              onClick={() => setQueue(item.key)}
+              onKeyDown={(event) => changeTab(event, index)}
+            >
+              {item.label}
+              <span>
+                {loading
+                  ? "—"
+                  : leads.filter((lead) =>
+                      matchesAttention(lead, item.key, unreviewed),
+                    ).length}
+              </span>
             </button>
-          </div>
+          ))}
+        </div>
+        <div
+          id="sales-queue-panel"
+          role="tabpanel"
+          aria-labelledby={`queue-tab-${queue}`}
+          className="sales-queue-panel"
+          tabIndex={0}
+        >
           {loading ? (
-            <div className="large-empty">
-              <LoaderCircle className="spin" />
-              <p>Cargando agenda…</p>
+            <div className="sales-empty" role="status">
+              <LoaderCircle className="spin" size={24} />
+              <p>Cargando leads…</p>
             </div>
-          ) : scheduled.length ? (
-            <div className="overview-rows">
-              {scheduled.slice(0, 5).map((lead) => (
-                <button
-                  className="overview-row"
-                  key={lead.id}
-                  onClick={() => onOpen(lead.id)}
-                >
-                  <span className="overview-row-icon">
-                    {lead.name.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="overview-row-content">
-                    <strong>{lead.name}</strong>
-                    <small>
-                      {lead.owner || "Sin responsable"} · {labels[lead.stage]}
-                    </small>
-                  </span>
-                  <span
-                    className={`overview-due ${Date.parse(lead.nextContactAt!) < now ? "late" : ""}`}
+          ) : items.length ? (
+            <div className="sales-leads">
+              {items.slice(0, 6).map((lead) => {
+                const late = Boolean(
+                  lead.nextContactAt && Date.parse(lead.nextContactAt) < now,
+                );
+                const action =
+                  queue === "pending"
+                    ? lead.stage === "new"
+                      ? "Dar primera atención"
+                      : "Revisar conversación"
+                    : queue === "closing"
+                      ? "Concretar el pedido"
+                      : lead.nextContactAt
+                        ? late
+                          ? "Retomar seguimiento"
+                          : "Contactar según lo acordado"
+                        : "Programar próximo contacto";
+                return (
+                  <button
+                    key={lead.id}
+                    className="sales-lead"
+                    onClick={() => onOpen(lead.id)}
+                    aria-label={`Ver detalle de ${lead.name}`}
                   >
-                    <span>
-                      <Clock3 size={12} />
-                      {Date.parse(lead.nextContactAt!) < now
-                        ? "Vencido"
-                        : "Programado"}
+                    <span
+                      className={`sales-lead-icon ${late ? "is-overdue" : ""}`}
+                      aria-hidden="true"
+                    >
+                      {late ? (
+                        <Clock3 size={18} />
+                      ) : queue === "pending" ? (
+                        <MessageSquare size={18} />
+                      ) : (
+                        <CalendarClock size={18} />
+                      )}
                     </span>
-                    <time>{date(lead.nextContactAt!)}</time>
-                  </span>
-                  <ArrowRight size={16} />
-                </button>
-              ))}
+                    <span className="sales-lead-identity">
+                      <strong>{lead.name}</strong>
+                      <span>
+                        {lead.source && <SourceLabel source={lead.source} />}
+                        <span className="sales-stage">
+                          {labels[lead.stage]}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="sales-next-action">
+                      <strong>{action}</strong>
+                      {lead.nextContactAt ? (
+                        <time
+                          dateTime={lead.nextContactAt}
+                          className={late ? "late" : ""}
+                        >
+                          {late && "Vencido · "}
+                          {formatDate(lead.nextContactAt)}
+                        </time>
+                      ) : queue !== "pending" ? (
+                        <span>Sin fecha de seguimiento</span>
+                      ) : null}
+                    </span>
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </button>
+                );
+              })}
             </div>
           ) : (
-            <div className="large-empty">
-              <span className="empty-icon">
-                <CalendarClock size={28} />
-              </span>
-              <h3>Agenda tu primer seguimiento</h3>
-              <p>Abre un contacto y define cuándo volverás a hablar con él.</p>
-              <button className="secondary" onClick={onPipeline}>
-                Ir al embudo <ArrowRight size={16} />
-              </button>
+            <div className="sales-empty">
+              <Check size={25} />
+              <h3>
+                {queue === "pending"
+                  ? "No hay leads por atender"
+                  : queue === "followups"
+                    ? "No hay seguimientos pendientes"
+                    : "No hay pedidos en cierre"}
+              </h3>
+              <p>
+                {queue === "pending"
+                  ? "Los leads nuevos y las fichas sin revisar aparecerán aquí."
+                  : queue === "followups"
+                    ? "Aquí verás los contactos programados y las conversaciones que necesitan una próxima fecha."
+                    : "Al mover un lead a Pedido en cierre aparecerá aquí."}
+              </p>
             </div>
           )}
-          <div className="panel-footnote">
-            <CalendarClock size={15} /> Se muestran primero los contactos
-            vencidos.
-          </div>
-        </section>
-        <section
-          className="board-section funnel-panel"
-          aria-labelledby="funnel-title"
-        >
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">
-                ESTADO DE LAS OPORTUNIDADES
-              </span>
-              <h2 id="funnel-title">Distribución del embudo</h2>
-            </div>
-            <LayoutGrid size={20} />
-          </div>
-          <div className="funnel-breakdown">
-            {pipelineStages.map((stage, index) => {
-              const count = leads.filter((lead) => lead.stage === stage).length;
-              return (
-                <div className={`funnel-row stage-${stage}`} key={stage}>
-                  <span className="funnel-number">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div>
-                    <div className="funnel-row-label">
-                      <span>{labels[stage]}</span>
-                      <strong>{loading ? "—" : count}</strong>
-                    </div>
-                    <div className="funnel-track">
-                      <span
-                        style={{
-                          width: loading
-                            ? "0%"
-                            : `${(count / Math.max(total, 1)) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <button className="funnel-link text-button" onClick={onPipeline}>
-            Gestionar embudo <ArrowRight size={16} />
-          </button>
-        </section>
-      </div>
-      <section
-        className="board-section recent-panel"
-        aria-labelledby="overview-leads-title"
-      >
-        <div className="section-heading">
-          <div>
-            <span className="section-kicker">ÚLTIMA ACTIVIDAD</span>
-            <h2 id="overview-leads-title">Oportunidades actualizadas</h2>
-          </div>
-          <button className="text-button" onClick={onPipeline}>
-            Ver embudo <ArrowRight size={16} />
-          </button>
         </div>
-        {loading ? (
-          <div className="large-empty">
-            <LoaderCircle className="spin" />
-            <p>Cargando contactos…</p>
-          </div>
-        ) : leads.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Contacto</th>
-                  <th>Etapa comercial</th>
-                  <th>Responsable</th>
-                  <th>Última actualización</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leads.slice(0, 5).map((lead) => (
-                  <tr key={lead.id}>
-                    <td>
-                      <button
-                        className="contact-link"
-                        onClick={() => onOpen(lead.id)}
-                      >
-                        <span className="table-avatar">
-                          {lead.name.slice(0, 2).toUpperCase()}
-                        </span>
-                        <span>
-                          <strong>{lead.name}</strong>
-                          <small>
-                            <SourceLabel source={lead.source || "Sin canal"} />
-                          </small>
-                        </span>
-                      </button>
-                    </td>
-                    <td>
-                      <span className={`stage-pill stage-${lead.stage}`}>
-                        {labels[lead.stage]}
-                      </span>
-                    </td>
-                    <td>{lead.owner || "Sin asignar"}</td>
-                    <td>{date(lead.updatedAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="recent-empty">
-            <span className="empty-icon">
-              <Users size={27} />
+        {!loading && items.length > 0 && (
+          <div className="sales-queue-footer">
+            <span>
+              {items.length > 6
+                ? `6 de ${items.length} leads`
+                : `${items.length} lead${items.length === 1 ? "" : "s"}`}
             </span>
-            <div>
-              <h3>Tu lista de contactos empieza aquí</h3>
-              <p>Usa Nueva oportunidad para añadir el primer lead.</p>
-            </div>
+            <button className="text-button" onClick={() => onFilter(queue)}>
+              Ver todos <ArrowRight size={14} />
+            </button>
           </div>
         )}
-        <div className="estimated-value">
-          <TrendingUp size={16} />
-          <span>Valor estimado de oportunidades abiertas</span>
-          <strong>
-            {loading
-              ? "—"
-              : new Intl.NumberFormat("es-CO", {
-                  maximumFractionDigits: 0,
-                }).format(estimated)}
-          </strong>
-        </div>
       </section>
+      <div className="sales-home-footer">
+        <div
+          className="sales-results"
+          role="group"
+          aria-label="Resultados registrados"
+        >
+          <span>Resultados registrados</span>
+          <span>
+            Primera compra{" "}
+            <strong>
+              {loading
+                ? "—"
+                : leads.filter((lead) => lead.stage === "won").length}
+            </strong>
+          </span>
+          <span>
+            Recurrentes{" "}
+            <strong>
+              {loading
+                ? "—"
+                : leads.filter((lead) => lead.stage === "recurring").length}
+            </strong>
+          </span>
+        </div>
+        <button className="text-button" onClick={onPipeline}>
+          Ver embudo <ArrowRight size={14} />
+        </button>
+      </div>
     </div>
   );
 }
