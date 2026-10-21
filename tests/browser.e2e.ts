@@ -13,12 +13,12 @@ test(
     const directory = mkdtempSync(join(tmpdir(), "almo-browser-"));
     const server = spawn(
       process.execPath,
-      ["node_modules/tsx/dist/cli.mjs", "server/main.ts"],
+      ["node_modules/tsx/dist/cli.mjs", "scripts/review-local.ts", "--no-open"],
       {
         cwd: process.cwd(),
         env: {
           ...process.env,
-          PORT: "3101",
+          CRM_REVIEW_PORT: "3101",
           CRM_DATABASE_PATH: join(directory, "browser.sqlite"),
           META_SEND_ENABLED: "false",
         },
@@ -129,14 +129,12 @@ test(
         })
         .waitFor();
       await page.getByRole("button", { name: "Cerrar", exact: true }).click();
-      const card = page
-        .locator("article.lead-card")
-        .filter({
-          has: page.getByRole("heading", {
-            name: "Hotel de prueba",
-            exact: true,
-          }),
-        });
+      const card = page.locator("article.lead-card").filter({
+        has: page.getByRole("heading", {
+          name: "Hotel de prueba",
+          exact: true,
+        }),
+      });
       await card.dragTo(
         page.getByRole("region", { name: "Nuevo contacto", exact: true }),
       );

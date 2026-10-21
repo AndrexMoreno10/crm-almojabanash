@@ -60,4 +60,4 @@ Desde el detalle del lead se puede abrir WhatsApp con un teléfono que incluya i
 
 Separar una primera venta de una relación recurrente evita contar una solicitud de muestra como cliente cerrado. Propuesta para acordar: primera venta cuando exista un primer pedido real; cliente recurrente cuando haya compras repetidas o un acuerdo de suministro respaldado por pedidos. La frecuencia y la cantidad deben registrarse según cada cliente, sin imponer el mismo mínimo diario, semanal o mensual a todos.
 
-El tamaño del piloto de muestras y sus condiciones no están aprobados. Comparar solicitudes, muestras efectivamente entregadas, primeros pedidos y repetición de compras antes de afirmar que el piloto mejora el cierre. No se garantiza un aumento de ventas.
+El usuario confirmó que el tamaño del piloto de muestras sigue por definir. Su tamaño y sus condiciones no están aprobados. Comparar solicitudes, muestras efectivamente entregadas, primeros pedidos y repetición de compras antes de afirmar que el piloto mejora el cierre. No se garantiza un aumento de ventas.

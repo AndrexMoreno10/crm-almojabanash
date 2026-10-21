@@ -12,7 +12,8 @@
     "start": "tsx server/main.ts",
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run build && npm test",
-    "test:e2e": "tsx --test tests/browser.e2e.ts"
+    "test:e2e": "tsx --test tests/browser.e2e.ts",
+    "review": "tsx scripts/review-local.ts"
   },
   "dependencies": {
     "express": "^5.1.0",

@@ -15,6 +15,24 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 
 **No está conectado a una cuenta real de Meta.** Instagram, Facebook, comentarios y atribución automática de campañas quedan pendientes. La sede, el teléfono y los municipios atendidos están confirmados por el usuario. No hay clientes, precios, catálogo ni condiciones de muestras inventados. Los contactos de las pruebas son ficticios y no quedan en la base de trabajo.
 
+## Revisar en Windows
+
+Requiere Git y **Node.js 24**. En PowerShell puedes obtener la ruta real del Escritorio, incluso si está en OneDrive:
+
+```powershell
+Set-Location ([Environment]::GetFolderPath('Desktop'))
+git clone https://github.com/AndrexMoreno10/crm-almojabanash.git
+if ($LASTEXITCODE -ne 0) { throw 'No se pudo clonar. Comprueba Git, el acceso a GitHub y si la carpeta ya existe.' }
+Set-Location .\crm-almojabanash
+.\iniciar-windows.cmd
+```
+
+El iniciador instala las dependencias con el lockfile, compila y abre el navegador en Windows. También puedes abrir `iniciar-windows.cmd` con doble clic dentro de la carpeta del proyecto. Mantén su ventana abierta; Ctrl+C detiene el servidor. No sobrescribe una base de datos existente.
+
+El modo de revisión usa un puerto local libre, funciona sin claves y desactiva Meta aunque haya variables configuradas. No importa ni envía mensajes reales. Los leads introducidos se guardan en `data/crm.sqlite`. Para volver a abrirlo, ejecuta el iniciador otra vez.
+
+En otro sistema, después de instalar y compilar, ejecuta `npm run review -- --no-open`. Abre la dirección que muestra en la terminal de tu propio equipo. El servidor de revisión y el recorrido de navegador se comprobaron en Linux; la ejecución del archivo `.cmd` y la apertura del navegador en Windows requieren comprobarse en el computador del usuario.
+
 ## Empezar
 
 Requiere **Node.js 24** y npm. SQLite viene incluido en Node; no requiere un servicio externo.
