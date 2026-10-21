@@ -4,7 +4,8 @@ Primera versión de un CRM para acompañar los contactos que llegan desde campa�
 
 ## Lo que funciona
 
-- Tablero Kanban con cinco etapas configurables, arrastrar tarjetas y selector de etapa. Cada movimiento queda en el historial.
+- Secciones independientes de **Resumen** y **Embudo de ventas** en el sidebar. El resumen reúne indicadores, seguimientos y oportunidades recientes; el embudo conserva el Kanban.
+- Tablero Kanban con cinco etapas configurables, arrastrar tarjetas y selector de etapa. Cada movimiento queda en el historial. La propuesta comercial de ocho etapas está documentada y aún no sustituye las actuales.
 - Apertura de WhatsApp para atención manual de contactos con indicativo internacional; sin sincronización automática.
 - Registro de contacto, canal, campaña, responsable y valor estimado opcional, sin moneda asumida.
 - Notas e historial, agenda de seguimiento, búsqueda y exportación CSV.

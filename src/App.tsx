@@ -1,3 +1,4 @@
+import Overview from "./Overview";
 import { business, whatsappContactUrl } from "../shared/business";
 import {
   Children,
@@ -46,7 +47,25 @@ import {
   type Stage,
 } from "../shared/types";
 
-type View = "pipeline" | "followups" | "contacts" | "assistant";
+const views = [
+  "overview",
+  "pipeline",
+  "followups",
+  "contacts",
+  "assistant",
+] as const;
+type View = (typeof views)[number];
+const viewLabels: Record<View, string> = {
+  overview: "Resumen",
+  pipeline: "Embudo de ventas",
+  followups: "Seguimientos",
+  contacts: "Contactos",
+  assistant: "Asistente",
+};
+function currentView(): View {
+  const hash = window.location.hash.slice(1);
+  return views.includes(hash as View) ? (hash as View) : "overview";
+}
 const currency = (value: number) =>
   new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(value);
 const dateLabel = (value: string) =>
@@ -100,7 +119,7 @@ export default function App() {
     stageLabels: defaultLabels,
   });
   const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
-  const [view, setView] = useState<View>("pipeline");
+  const [view, setView] = useState<View>(currentView);
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("");
   const [loading, setLoading] = useState(true);
@@ -111,6 +130,15 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [movingId, setMovingId] = useState<string | null>(null);
   const [clock, setClock] = useState(Date.now());
+  function navigate(next: View) {
+    setView(next);
+    window.location.hash = next;
+  }
+  useEffect(() => {
+    const onHashChange = () => setView(currentView());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
   async function load() {
     try {
       const [data, config, meta] = await Promise.all([
@@ -230,7 +258,7 @@ export default function App() {
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            setView("pipeline");
+            navigate("overview");
           }}
         >
           <span className="brand-symbol">
@@ -252,15 +280,22 @@ export default function App() {
         <nav>
           <NavButton
             icon={<LayoutDashboard size={19} />}
-            active={view === "pipeline"}
-            onClick={() => setView("pipeline")}
+            active={view === "overview"}
+            onClick={() => navigate("overview")}
           >
-            Oportunidades <span className="nav-count">{open.length}</span>
+            Resumen
+          </NavButton>
+          <NavButton
+            icon={<LayoutGrid size={19} />}
+            active={view === "pipeline"}
+            onClick={() => navigate("pipeline")}
+          >
+            Embudo de ventas <span className="nav-count">{open.length}</span>
           </NavButton>
           <NavButton
             icon={<CalendarClock size={19} />}
             active={view === "followups"}
-            onClick={() => setView("followups")}
+            onClick={() => navigate("followups")}
           >
             Seguimientos{" "}
             {overdue.length > 0 && (
@@ -270,14 +305,14 @@ export default function App() {
           <NavButton
             icon={<Users size={19} />}
             active={view === "contacts"}
-            onClick={() => setView("contacts")}
+            onClick={() => navigate("contacts")}
           >
             Contactos
           </NavButton>
           <NavButton
             icon={<Bot size={19} />}
             active={view === "assistant"}
-            onClick={() => setView("assistant")}
+            onClick={() => navigate("assistant")}
           >
             Asistente de ventas
           </NavButton>
@@ -288,7 +323,7 @@ export default function App() {
           <p>
             Un próximo paso claro te ayuda a mantener viva cada oportunidad.
           </p>
-          <button onClick={() => setView("followups")}>
+          <button onClick={() => navigate("followups")}>
             Ver seguimientos <ArrowRight size={15} />
           </button>
         </div>
@@ -313,15 +348,7 @@ export default function App() {
         <header className="topbar">
           <div>
             Espacio de trabajo <ChevronRight size={13} />{" "}
-            <strong>
-              {view === "pipeline"
-                ? "Oportunidades"
-                : view === "followups"
-                  ? "Seguimientos"
-                  : view === "assistant"
-                    ? "Asistente"
-                    : "Contactos"}
-            </strong>
+            <strong>{viewLabels[view]}</strong>
           </div>
           <span className="manual-indicator">
             <span /> Registro manual
@@ -332,22 +359,26 @@ export default function App() {
             <div>
               <div className="eyebrow">MENOS OPORTUNIDADES OLVIDADAS</div>
               <h1>
-                {view === "pipeline"
-                  ? "Conversaciones que avanzan."
-                  : view === "followups"
-                    ? "El siguiente paso importa."
-                    : view === "assistant"
-                      ? "Atención con un siguiente paso."
-                      : "Personas, antes que números."}
+                {view === "overview"
+                  ? "Tu operación, de un vistazo."
+                  : view === "pipeline"
+                    ? "Embudo de ventas"
+                    : view === "followups"
+                      ? "El siguiente paso importa."
+                      : view === "assistant"
+                        ? "Atención con un siguiente paso."
+                        : "Personas, antes que números."}
               </h1>
               <p>
-                {view === "pipeline"
-                  ? "Organiza tus contactos y acompaña cada oportunidad hasta el cierre."
-                  : view === "followups"
-                    ? "Retoma las conversaciones pendientes y mantén el ritmo de tu equipo."
-                    : view === "assistant"
-                      ? "Prueba cómo acompañaremos a los interesados en compras al por mayor."
-                      : "Encuentra la información y el contexto de cada oportunidad."}
+                {view === "overview"
+                  ? "Revisa tus indicadores y decide a qué conversaciones dar prioridad."
+                  : view === "pipeline"
+                    ? "Organiza tus contactos y acompaña cada oportunidad hasta el cierre."
+                    : view === "followups"
+                      ? "Retoma las conversaciones pendientes y mantén el ritmo de tu equipo."
+                      : view === "assistant"
+                        ? "Prueba cómo acompañaremos a los interesados en compras al por mayor."
+                        : "Encuentra la información y el contexto de cada oportunidad."}
               </p>
             </div>
             <button
@@ -366,46 +397,58 @@ export default function App() {
               <button onClick={() => void load()}>Reintentar</button>
             </div>
           )}
-          <section className="metrics" aria-label="Resumen comercial">
-            <Metric
-              label="Oportunidades abiertas"
-              value={String(open.length)}
-              icon={<Users size={19} />}
-              foot="Contactos por acompañar"
+          {view === "overview" && (
+            <section className="metrics" aria-label="Resumen comercial">
+              <Metric
+                label="Oportunidades abiertas"
+                value={String(open.length)}
+                icon={<Users size={19} />}
+                foot="Contactos por acompañar"
+              />
+              <Metric
+                label="Valor en oportunidades"
+                value={currency(open.reduce((sum, l) => sum + l.value, 0))}
+                icon={<TrendingUp size={19} />}
+                foot="Suma de valores estimados"
+              />
+              <Metric
+                label="Tasa de cierre"
+                value={
+                  closed.length
+                    ? `${Math.round((won.length / closed.length) * 100)}%`
+                    : "—"
+                }
+                icon={<Target size={19} />}
+                foot={
+                  closed.length
+                    ? `${won.length} ganadas de ${closed.length} cerradas`
+                    : "Aún no hay oportunidades cerradas"
+                }
+              />
+              <Metric
+                label="Seguimientos vencidos"
+                value={String(overdue.length)}
+                icon={<Clock3 size={19} />}
+                foot={
+                  overdue.length
+                    ? "Es momento de retomar el contacto"
+                    : "Sin seguimientos vencidos"
+                }
+                accent={overdue.length > 0}
+              />
+            </section>
+          )}
+          {view === "overview" ? (
+            <Overview
+              leads={leads}
+              labels={settings.stageLabels}
+              loading={loading}
+              now={clock}
+              onOpen={setSelected}
+              onPipeline={() => navigate("pipeline")}
+              onFollowups={() => navigate("followups")}
             />
-            <Metric
-              label="Valor en oportunidades"
-              value={currency(open.reduce((sum, l) => sum + l.value, 0))}
-              icon={<TrendingUp size={19} />}
-              foot="Suma de valores estimados"
-            />
-            <Metric
-              label="Tasa de cierre"
-              value={
-                closed.length
-                  ? `${Math.round((won.length / closed.length) * 100)}%`
-                  : "—"
-              }
-              icon={<Target size={19} />}
-              foot={
-                closed.length
-                  ? `${won.length} ganadas de ${closed.length} cerradas`
-                  : "Aún no hay oportunidades cerradas"
-              }
-            />
-            <Metric
-              label="Seguimientos vencidos"
-              value={String(overdue.length)}
-              icon={<Clock3 size={19} />}
-              foot={
-                overdue.length
-                  ? "Es momento de retomar el contacto"
-                  : "Sin seguimientos vencidos"
-              }
-              accent={overdue.length > 0}
-            />
-          </section>
-          {view === "assistant" ? (
+          ) : view === "assistant" ? (
             <Assistant status={metaStatus} />
           ) : (
             <section className="board-section">
@@ -471,14 +514,14 @@ export default function App() {
                   <button
                     className={view === "pipeline" ? "chosen" : ""}
                     aria-label="Vista de tablero"
-                    onClick={() => setView("pipeline")}
+                    onClick={() => navigate("pipeline")}
                   >
                     <LayoutGrid size={17} />
                   </button>
                   <button
                     className={view === "contacts" ? "chosen" : ""}
                     aria-label="Vista de lista"
-                    onClick={() => setView("contacts")}
+                    onClick={() => navigate("contacts")}
                   >
                     <List size={18} />
                   </button>
@@ -710,6 +753,7 @@ export default function App() {
               body: JSON.stringify(input),
             });
             setModal(null);
+            navigate("pipeline");
             await saved("Oportunidad creada");
           }}
           labels={settings.stageLabels}
@@ -756,6 +800,7 @@ function NavButton({
   return (
     <button
       className={`nav-item ${active ? "active" : ""}`}
+      aria-current={active ? "page" : undefined}
       onClick={onClick}
       aria-label={Children.toArray(children)
         .filter((child) => typeof child === "string")

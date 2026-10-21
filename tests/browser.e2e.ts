@@ -63,6 +63,36 @@ test(
       });
       await page.goto("http://127.0.0.1:3101");
       await page
+        .getByRole("heading", {
+          name: "Tu operación, de un vistazo.",
+          exact: true,
+        })
+        .waitFor();
+      assert.equal(await page.locator(".kanban").count(), 0);
+      await page
+        .getByRole("button", { name: "Embudo de ventas", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: "Tu embudo de ventas", exact: false })
+        .waitFor();
+      assert.equal(
+        await page
+          .getByRole("region", { name: "Resumen comercial", exact: true })
+          .count(),
+        0,
+      );
+      await page.reload();
+      await page
+        .getByRole("heading", { name: "Embudo de ventas", exact: true })
+        .waitFor();
+      await page.goBack();
+      await page
+        .getByRole("heading", {
+          name: "Tu operación, de un vistazo.",
+          exact: true,
+        })
+        .waitFor();
+      await page
         .getByRole("button", { name: "Nueva oportunidad", exact: true })
         .click();
       await page.getByLabel("Nombre del contacto").fill("Hotel de prueba");
@@ -73,6 +103,9 @@ test(
         .getByLabel("Teléfono", { exact: true })
         .fill("+57 300 555 5555");
       await page.getByLabel("Canal de origen").fill("WhatsApp");
+      await page
+        .getByLabel("Próximo contacto (hora de tu navegador)")
+        .fill("2026-01-01T10:00");
       await page.getByLabel("Valor estimado").fill("150000");
       await page
         .getByRole("button", { name: "Crear oportunidad", exact: true })
@@ -177,6 +210,17 @@ test(
         ).length,
         4,
       );
+      await page.getByRole("button", { name: "Resumen", exact: true }).click();
+      await page
+        .getByRole("region", { name: /Seguimientos por atender/ })
+        .getByRole("button")
+        .filter({ hasText: "Hotel de prueba" })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("heading", { name: "Hotel de prueba", exact: true })
+        .waitFor();
+      await page.getByRole("button", { name: "Cerrar", exact: true }).click();
       await page
         .getByRole("button", { name: "Asistente de ventas", exact: true })
         .click();
@@ -213,7 +257,7 @@ test(
         })
         .waitFor();
       await page
-        .getByRole("button", { name: "Oportunidades", exact: true })
+        .getByRole("button", { name: "Embudo de ventas", exact: true })
         .click();
       await page.screenshot({
         path: "/tmp/almo-crm-desktop.png",

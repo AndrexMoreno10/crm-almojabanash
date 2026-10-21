@@ -61,3 +61,25 @@ Desde el detalle del lead se puede abrir WhatsApp con un teléfono que incluya i
 Separar una primera venta de una relación recurrente evita contar una solicitud de muestra como cliente cerrado. Propuesta para acordar: primera venta cuando exista un primer pedido real; cliente recurrente cuando haya compras repetidas o un acuerdo de suministro respaldado por pedidos. La frecuencia y la cantidad deben registrarse según cada cliente, sin imponer el mismo mínimo diario, semanal o mensual a todos.
 
 El usuario confirmó que el tamaño del piloto de muestras sigue por definir. Su tamaño y sus condiciones no están aprobados. Comparar solicitudes, muestras efectivamente entregadas, primeros pedidos y repetición de compras antes de afirmar que el piloto mejora el cierre. No se garantiza un aumento de ventas.
+
+## Navegación del CRM
+
+- **Resumen** es la entrada inicial: indicadores comerciales, próximos seguimientos y oportunidades actualizadas.
+- **Embudo de ventas** es una sección propia del sidebar para trabajar el Kanban con más espacio.
+- Se conserva la sección al recargar y se puede navegar con Atrás/Adelante del navegador.
+- Al crear una oportunidad, el CRM abre el embudo para continuar su gestión.
+
+## Propuesta de ocho etapas comerciales
+
+El usuario pidió recomendar siete u ocho etapas. La siguiente es una propuesta de proceso; no sustituye todavía las cinco etapas actuales de la aplicación:
+
+1. **Nuevo lead**: llega el contacto y todavía no ha recibido atención.
+2. **En atención**: se respondió y se está entendiendo su necesidad; se resuelven ubicación y dudas iniciales.
+3. **Información comercial enviada**: se envió el catálogo o cotización pertinente. Registrar por separado catálogo y precios para no dar por enviado lo que falta.
+4. **Interés confirmado**: el cliente expresa intención de avanzar y se conoce su necesidad; enviar información por sí solo no demuestra interés.
+5. **Muestra en evaluación**: el equipo aprobó una muestra y se coordina o espera la valoración. Es opcional y se puede saltar; no implica que el piloto ni sus condiciones estén aprobados.
+6. **Pedido en cierre**: se concretan cantidades, precio, entrega y pago del primer pedido.
+7. **Primera compra realizada**: existe una compra real. Se propuso contarla al entregar el primer pedido; la regla definitiva sigue por acordar.
+8. **Cliente recurrente**: ya repite compras y se conocen frecuencia y cantidades habituales, según cada cliente.
+
+«Pendiente» no reemplaza la etapa: conservar la fase, responsable, próxima fecha y motivo de espera. Distinguir ausencia de respuesta de una oportunidad expresamente perdida. Los hitos de catálogo, precios y muestra requieren sus fechas y evidencias; su registro estructurado sigue pendiente, aunque hoy se pueden documentar en notas e historial.
