@@ -1309,6 +1309,24 @@ textarea::placeholder {
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
+.source-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+.source-label > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.source-logo {
+  display: block;
+  flex-shrink: 0;
+}
 .card-channel {
   display: flex;
   gap: 7px;

@@ -1,4 +1,5 @@
 import Overview from "./Overview";
+import SourceLabel from "./SourceLabel";
 import AttentionPanel from "./AttentionPanel";
 import {
   attentionLabels,
@@ -1083,7 +1084,7 @@ export default function App() {
                               </button>
                             </td>
                             <td>
-                              {l.source || "Sin canal"}
+                              <SourceLabel source={l.source || "Sin canal"} />
                               <small>{l.campaign}</small>
                             </td>
                             <td>
@@ -1285,7 +1286,7 @@ function LeadCard({
           <div className="card-summary">
             <h4 title={lead.name}>{lead.name}</h4>
             <div className="card-channel">
-              {lead.source && <span title={lead.source}>{lead.source}</span>}
+              {lead.source && <SourceLabel source={lead.source} />}
               {lead.phone && <span title={lead.phone}>{lead.phone}</span>}
             </div>
           </div>

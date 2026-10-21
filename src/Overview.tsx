@@ -1,3 +1,4 @@
+import SourceLabel from "./SourceLabel";
 import {
   ArrowRight,
   CalendarClock,
@@ -242,7 +243,9 @@ export default function Overview({
                         </span>
                         <span>
                           <strong>{lead.name}</strong>
-                          <small>{lead.source || "Sin canal"}</small>
+                          <small>
+                            <SourceLabel source={lead.source || "Sin canal"} />
+                          </small>
                         </span>
                       </button>
                     </td>
